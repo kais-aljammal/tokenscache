@@ -1,6 +1,6 @@
 /**
  * Token waste audit — summarizes ledger spend and cache efficiency across sessions.
- * Run: npm run audit [-- --db ./tokenguard.db]
+ * Run: npm run audit [-- --db ./tokenscache.db]
  */
 
 import { existsSync } from "node:fs";
@@ -31,7 +31,7 @@ function parseDbArg(): string {
   if (idx !== -1 && process.argv[idx + 1]) {
     return resolve(process.argv[idx + 1]!);
   }
-  return resolve(process.cwd(), "tokenguard.db");
+  return resolve(process.cwd(), "tokenscache.db");
 }
 
 function formatUsd(value: number): string {
@@ -43,7 +43,7 @@ async function main(): Promise<void> {
 
   if (!existsSync(dbPath)) {
     console.error(`Database not found: ${dbPath}`);
-    console.error("Run an agent with TokenGuard.init() first, or pass --db <path>.");
+    console.error("Run an agent with TokensCache.init() first, or pass --db <path>.");
     process.exitCode = 1;
     return;
   }
@@ -101,7 +101,7 @@ async function main(): Promise<void> {
   const cacheHitRatio =
     totalInput + totalCacheRead > 0 ? totalCacheRead / (totalInput + totalCacheRead) : 0;
 
-  console.log("TokenGuard Token Waste Audit");
+  console.log("TokensCache Token Waste Audit");
   console.log("============================");
   console.log(`Database:       ${dbPath}`);
   console.log(`Sessions:       ${sessions.length}`);

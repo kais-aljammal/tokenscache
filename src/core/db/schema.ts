@@ -1,5 +1,5 @@
 /**
- * SQLite schema initialization for TokenGuard L3 cache, ledger, and sessions.
+ * SQLite schema initialization for TokensCache L3 cache, ledger, and sessions.
  * Adapted from GPTCache cache-manager persistence patterns (MIT, patterns extracted).
  */
 

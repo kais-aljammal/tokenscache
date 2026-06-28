@@ -1,11 +1,11 @@
-# TokenGuard Browser / React Usage
+# TokensCache Browser / React Usage
 
-TokenGuard ships a browser-safe entry point at `tokenguard/browser` for client-side agents and React apps.
+TokensCache ships a browser-safe entry point at `tokenscache/browser` for client-side agents and React apps.
 
 ## Install
 
 ```bash
-npm install tokenguard
+npm install tokenscache
 ```
 
 For local development from this monorepo:
@@ -19,10 +19,10 @@ npm run build
 
 ```tsx
 import {
-  TokenGuard,
-  TokenGuardConfigSchema,
+  TokensCache,
+  TokensCacheConfigSchema,
   checkBudgetLimits,
-} from "tokenguard/browser";
+} from "tokenscache/browser";
 ```
 
 Node-only modules (`better-sqlite3`, filesystem-backed L3) are excluded from the browser bundle. Use **L1 in-memory** and **L2 IndexedDB** caches in the browser.
@@ -31,19 +31,19 @@ Node-only modules (`better-sqlite3`, filesystem-backed L3) are excluded from the
 
 ```tsx
 import { useMemo, useRef } from "react";
-import { TokenGuard } from "tokenguard/browser";
+import { TokensCache } from "tokenscache/browser";
 
-export function useTokenGuard() {
-  const ref = useRef<TokenGuard | null>(null);
+export function useTokensCache() {
+  const ref = useRef<TokensCache | null>(null);
 
   return useMemo(() => {
     if (!ref.current) {
-      ref.current = new TokenGuard({
-        config: TokenGuardConfigSchema.parse({
+      ref.current = new TokensCache({
+        config: TokensCacheConfigSchema.parse({
           providers: { openai: { apiKey: import.meta.env.VITE_OPENAI_API_KEY } },
           cache: {
             l1: { maxEntries: 200 },
-            l2: { dbName: "my-app-tokenguard", maxSizeMB: 50 },
+            l2: { dbName: "my-app-tokenscache", maxSizeMB: 50 },
           },
         }),
       });

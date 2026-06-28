@@ -50,7 +50,7 @@ async function main(): Promise<void> {
   const ageDays = daysBetween(lastVerified, today);
   const stale = ageDays > thresholdDays;
 
-  console.log("TokenGuard Pricing Freshness Check");
+  console.log("TokensCache Pricing Freshness Check");
   console.log("==================================");
   console.log(`File:            ${pricingPath}`);
   console.log(`Last verified:   ${lastVerifiedRaw}`);

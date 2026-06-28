@@ -1,5 +1,5 @@
 /**
- * TokenGuard cache benchmark — simulates 200 prompts with 30% semantic overlap.
+ * TokensCache cache benchmark — simulates 200 prompts with 30% semantic overlap.
  * Run: npm run bench
  */
 
@@ -108,7 +108,7 @@ async function main(): Promise<void> {
   const elapsedMs = performance.now() - started;
   const hitRate = hits / prompts.length;
 
-  console.log("TokenGuard Cache Benchmark");
+  console.log("TokensCache Cache Benchmark");
   console.log("==========================");
   console.log(`Prompts:        ${prompts.length}`);
   console.log(`Unique bases:   ${UNIQUE_COUNT}`);

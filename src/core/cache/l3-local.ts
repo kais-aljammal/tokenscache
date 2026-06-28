@@ -37,7 +37,7 @@ class LinearAnnIndex implements AnnIndex {
 
   add(key: number, vector: Float32Array): void {
     if (vector.length !== this.dimensions) {
-      throw new Error("[TokenGuard] ANN dimension mismatch");
+      throw new Error("[TokensCache] ANN dimension mismatch");
     }
     this.vectors.set(key, vector);
   }

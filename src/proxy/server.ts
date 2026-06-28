@@ -2,7 +2,7 @@ import http from "node:http";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
-import { TokenGuard, type TokenGuardConfig } from "../index.js";
+import { TokensCache, type TokensCacheConfig } from "../index.js";
 import { AnthropicProvider, GeminiProvider, OpenAIProvider } from "../core/providers/index.js";
 import {
   isAllowedUpstreamUrl,
@@ -17,7 +17,7 @@ export interface ProxyServerOptions {
   port?: number;
   host?: string;
   defaultProvider?: string;
-  config?: TokenGuardConfig;
+  config?: TokensCacheConfig;
   dbPath?: string;
 }
 
@@ -97,24 +97,24 @@ function toOpenAICompletion(response: {
         cached_tokens: response.usage.cacheReadTokens ?? 0,
       },
     },
-    tokenguard: {
+    tokenscache: {
       cached: response.cached ?? false,
       cache_layer: response.cacheLayer ?? null,
     },
   };
 }
 
-export function createTokenGuard(config: TokenGuardConfig, dbPath?: string): TokenGuard {
-  const tg = new TokenGuard({ config, dbPath });
+export function createTokensCache(config: TokensCacheConfig, dbPath?: string): TokensCache {
+  const tg = new TokensCache({ config, dbPath });
   registerProvidersFromConfig(tg, config);
   return tg;
 }
 
-export function registerProvidersFromConfig(tg: TokenGuard, config: TokenGuardConfig): void {
+export function registerProvidersFromConfig(tg: TokensCache, config: TokensCacheConfig): void {
   for (const [name, providerConfig] of Object.entries(config.providers)) {
     const baseUrl = providerConfig.baseUrl;
     if (baseUrl && !isAllowedUpstreamUrl(baseUrl)) {
-      throw new Error(`[TokenGuard Proxy] Blocked upstream URL (not whitelisted): ${baseUrl}`);
+      throw new Error(`[TokensCache Proxy] Blocked upstream URL (not whitelisted): ${baseUrl}`);
     }
 
     const key = name.toLowerCase();
@@ -129,7 +129,7 @@ export function registerProvidersFromConfig(tg: TokenGuard, config: TokenGuardCo
 }
 
 export function createProxyHandler(
-  tg: TokenGuard,
+  tg: TokensCache,
   defaultProvider = "openai",
 ): (req: IncomingMessage, res: ServerResponse) => void {
   return (req, res) => {
@@ -140,13 +140,13 @@ export function createProxyHandler(
 async function handleProxyRequest(
   req: IncomingMessage,
   res: ServerResponse,
-  tg: TokenGuard,
+  tg: TokensCache,
   defaultProvider: string,
 ): Promise<void> {
   const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
 
   if (req.method === "GET" && url.pathname === "/health") {
-    sendJson(res, 200, { status: "ok", service: "tokenguard-proxy" });
+    sendJson(res, 200, { status: "ok", service: "tokenscache-proxy" });
     return;
   }
 
@@ -173,7 +173,7 @@ async function handleProxyRequest(
     if (body.stream) {
       sendJson(res, 400, {
         error: {
-          message: "Streaming is not supported by TokenGuard proxy",
+          message: "Streaming is not supported by TokensCache proxy",
           type: "invalid_request_error",
         },
       });
@@ -182,7 +182,7 @@ async function handleProxyRequest(
 
     const provider =
       (typeof body.provider === "string" ? body.provider : undefined) ??
-      (req.headers["x-tg-provider"] as string | undefined) ??
+      (req.headers["x-tc-provider"] as string | undefined) ??
       defaultProvider;
 
     const chatRequest: ChatRequest = {
@@ -206,10 +206,10 @@ async function handleProxyRequest(
 }
 
 export function startProxyServer(
-  tg: TokenGuard,
+  tg: TokensCache,
   options: ProxyServerOptions = {},
 ): http.Server {
-  const port = options.port ?? Number(process.env.TOKENGUARD_PROXY_PORT ?? 7431);
+  const port = options.port ?? Number(process.env.TOKENSCACHE_PROXY_PORT ?? 7431);
   const host = options.host ?? "127.0.0.1";
   const defaultProvider = options.defaultProvider ?? "openai";
   const server = http.createServer(createProxyHandler(tg, defaultProvider));
@@ -217,10 +217,10 @@ export function startProxyServer(
   return server;
 }
 
-function loadConfigFromEnv(): TokenGuardConfig {
-  const configPath = process.env.TOKENGUARD_CONFIG;
+function loadConfigFromEnv(): TokensCacheConfig {
+  const configPath = process.env.TOKENSCACHE_CONFIG;
   if (configPath) {
-    return JSON.parse(readFileSync(configPath, "utf-8")) as TokenGuardConfig;
+    return JSON.parse(readFileSync(configPath, "utf-8")) as TokensCacheConfig;
   }
 
   return {
@@ -237,12 +237,12 @@ const isDirectRun =
 
 if (isDirectRun) {
   const config = loadConfigFromEnv();
-  const tg = createTokenGuard(config, process.env.TOKENGUARD_DB_PATH);
-  const port = Number(process.env.TOKENGUARD_PROXY_PORT ?? 7431);
+  const tg = createTokensCache(config, process.env.TOKENSCACHE_DB_PATH);
+  const port = Number(process.env.TOKENSCACHE_PROXY_PORT ?? 7431);
   const server = startProxyServer(tg, { port });
   server.on("listening", () => {
     const addr = server.address();
     const boundPort = typeof addr === "object" && addr ? addr.port : port;
-    process.stderr.write(`[TokenGuard Proxy] listening on http://127.0.0.1:${boundPort}\n`);
+    process.stderr.write(`[TokensCache Proxy] listening on http://127.0.0.1:${boundPort}\n`);
   });
 }

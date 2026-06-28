@@ -1,11 +1,11 @@
 import type { DatabaseAdapter } from "../db/schema.js";
-import type { BudgetAction, ChatRequest, TokenGuardConfig, TokenUsage } from "../types.js";
+import type { BudgetAction, ChatRequest, TokensCacheConfig, TokenUsage } from "../types.js";
 import { BudgetLedger, checkBudgetLimits, type BudgetCheckResult } from "./ledger.js";
 import { estimateRequestCost, estimateUsageCost } from "./pricing.js";
 
 export interface BudgetEnforcerOptions {
   adapter: DatabaseAdapter;
-  config: TokenGuardConfig;
+  config: TokensCacheConfig;
   sessionId: string;
 }
 
@@ -20,7 +20,7 @@ export interface BudgetEnforcementResult extends BudgetCheckResult {
  */
 export class BudgetEnforcer {
   private readonly ledger: BudgetLedger;
-  private readonly config: TokenGuardConfig;
+  private readonly config: TokensCacheConfig;
   private readonly sessionId: string;
 
   constructor(options: BudgetEnforcerOptions) {
@@ -118,7 +118,7 @@ export class BudgetEnforcer {
   applyAction(request: ChatRequest, action: BudgetAction | null): ChatRequest {
     if (!action || action === "warn") return request;
     if (action === "block") {
-      throw new Error("[TokenGuard] Budget exhausted — request blocked");
+      throw new Error("[TokensCache] Budget exhausted — request blocked");
     }
     return {
       ...request,

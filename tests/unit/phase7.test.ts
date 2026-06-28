@@ -3,12 +3,12 @@ import http from "node:http";
 import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { TokenGuard } from "../../src/index.js";
+import { TokensCache } from "../../src/index.js";
 import {
   isAllowedProviderHost,
   isAllowedUpstreamUrl,
   createProxyHandler,
-  createTokenGuard,
+  createTokensCache,
 } from "../../src/proxy/server.js";
 import { listMcpTools, handleMcpRequest } from "../../src/proxy/mcp-server.js";
 import {
@@ -94,7 +94,7 @@ describe("Phase 7 — proxy routing", () => {
 
   it("blocks provider config with non-whitelisted baseUrl", () => {
     expect(() =>
-      createTokenGuard({
+      createTokensCache({
         providers: {
           openai: { apiKey: "test", baseUrl: "https://evil.proxy/hook" },
         },
@@ -102,8 +102,8 @@ describe("Phase 7 — proxy routing", () => {
     ).toThrow("not whitelisted");
   });
 
-  it("routes chat completions through TokenGuard", async () => {
-    const tg = new TokenGuard({
+  it("routes chat completions through TokensCache", async () => {
+    const tg = new TokensCache({
       config: { providers: { openai: { apiKey: "test" } } },
       dbPath: ":memory:",
     });
@@ -121,13 +121,13 @@ describe("Phase 7 — proxy routing", () => {
     expect(first.status).toBe(200);
     const choices = first.body.choices as Array<{ message: { content: string } }>;
     expect(choices[0]?.message.content).toContain("hello proxy");
-    expect((first.body.tokenguard as { cached: boolean }).cached).toBe(false);
+    expect((first.body.tokenscache as { cached: boolean }).cached).toBe(false);
 
     const second = await requestJson(port, "/v1/chat/completions", "POST", {
       model: "gpt-4o-mini",
       messages: [{ role: "user", content: "hello proxy" }],
     });
-    expect((second.body.tokenguard as { cached: boolean }).cached).toBe(true);
+    expect((second.body.tokenscache as { cached: boolean }).cached).toBe(true);
 
     await new Promise<void>((resolve) => server.close(() => resolve()));
     tg.close();
@@ -135,10 +135,10 @@ describe("Phase 7 — proxy routing", () => {
 });
 
 describe("Phase 7 — MCP server", () => {
-  let tg: TokenGuard;
+  let tg: TokensCache;
 
   beforeEach(() => {
-    tg = new TokenGuard({
+    tg = new TokensCache({
       config: { providers: { openai: { apiKey: "test" } } },
       dbPath: ":memory:",
     });
@@ -149,14 +149,14 @@ describe("Phase 7 — MCP server", () => {
     tg.close();
   });
 
-  it("lists all TokenGuard MCP tools", () => {
+  it("lists all TokensCache MCP tools", () => {
     expect(listMcpTools().map((t) => t.name)).toEqual([
-      "tg_chat",
-      "tg_cache_stats",
-      "tg_cache_invalidate",
-      "tg_budget_status",
-      "tg_compress_context",
-      "tg_audit",
+      "tc_chat",
+      "tc_cache_stats",
+      "tc_cache_invalidate",
+      "tc_budget_status",
+      "tc_compress_context",
+      "tc_audit",
     ]);
   });
 
@@ -167,17 +167,17 @@ describe("Phase 7 — MCP server", () => {
     );
     const tools = (response.result as { tools: Array<{ name: string }> }).tools;
     expect(tools).toHaveLength(6);
-    expect(tools[0]?.name).toBe("tg_chat");
+    expect(tools[0]?.name).toBe("tc_chat");
   });
 
-  it("executes tg_chat via tools/call", async () => {
+  it("executes tc_chat via tools/call", async () => {
     const response = await handleMcpRequest(
       {
         jsonrpc: "2.0",
         id: 2,
         method: "tools/call",
         params: {
-          name: "tg_chat",
+          name: "tc_chat",
           arguments: {
             provider: "openai",
             model: "gpt-4o-mini",
@@ -198,7 +198,7 @@ describe("Phase 7 — dashboard endpoints", () => {
   let dbPath: string;
 
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), "tokenguard-dash-"));
+    dir = mkdtempSync(join(tmpdir(), "tokenscache-dash-"));
     dbPath = join(dir, "dash.db");
   });
 
@@ -268,15 +268,15 @@ describe("Phase 7 — dashboard endpoints", () => {
         .on("error", reject);
     });
     expect(html.status).toBe(200);
-    expect(html.text).toContain("TokenGuard Dashboard");
+    expect(html.text).toContain("TokensCache Dashboard");
 
     await new Promise<void>((resolve) => server.close(() => resolve()));
   });
 });
 
-describe("Phase 7 — TokenGuard pipeline", () => {
+describe("Phase 7 — TokensCache pipeline", () => {
   it("uses CacheRouter for repeated chat requests", async () => {
-    const tg = new TokenGuard({
+    const tg = new TokensCache({
       config: { providers: { openai: { apiKey: "test" } } },
       dbPath: ":memory:",
     });

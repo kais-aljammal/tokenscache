@@ -1,12 +1,12 @@
-# Contributing to TokenGuard
+# Contributing to TokensCache
 
-Thank you for your interest in contributing. TokenGuard is an MIT-licensed SDK for AI token optimization — we welcome bug fixes, tests, and documentation improvements.
+Thank you for your interest in contributing. TokensCache is an MIT-licensed SDK for AI token optimization — we welcome bug fixes, tests, and documentation improvements.
 
 ## Development setup
 
 ```bash
-git clone https://github.com/kais-aljammal/tokenguard.git
-cd tokenguard
+git clone https://github.com/kais-aljammal/tokenscache.git
+cd tokenscache
 npm install
 npm run typecheck
 npm test

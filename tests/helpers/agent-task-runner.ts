@@ -1,4 +1,4 @@
-import { TokenGuard } from "../../src/index.js";
+import { TokensCache } from "../../src/index.js";
 import { ProviderAdapter, type ProviderAdapterConfig } from "../../src/core/providers/base.js";
 import type { ChatRequest, ChatResponse, TokenUsage } from "../../src/core/types.js";
 import {
@@ -16,7 +16,7 @@ export interface MeterSnapshot {
 }
 
 export interface TaskRunResult {
-  mode: "with-tokenguard" | "without-tokenguard";
+  mode: "with-tokenscache" | "without-tokenscache";
   upstreamCalls: number;
   inputTokens: number;
   outputTokens: number;
@@ -75,12 +75,12 @@ export class ScenarioMockProvider extends ProviderAdapter {
   }
 }
 
-export async function runWithTokenGuard(
+export async function runWithTokensCache(
   scenario: AgentTaskScenario,
   dbPath = ":memory:",
 ): Promise<TaskRunResult> {
   const provider = new ScenarioMockProvider(scenario.artifacts);
-  const guard = new TokenGuard({
+  const guard = new TokensCache({
     config: {
       providers: { mock: {} },
       cache: {
@@ -121,7 +121,7 @@ export async function runWithTokenGuard(
   guard.close();
 
   return {
-    mode: "with-tokenguard",
+    mode: "with-tokenscache",
     upstreamCalls: meter.upstreamCalls,
     inputTokens: meter.inputTokens,
     outputTokens: meter.outputTokens,
@@ -132,7 +132,7 @@ export async function runWithTokenGuard(
   };
 }
 
-export async function runWithoutTokenGuard(scenario: AgentTaskScenario): Promise<TaskRunResult> {
+export async function runWithoutTokensCache(scenario: AgentTaskScenario): Promise<TaskRunResult> {
   const provider = new ScenarioMockProvider(scenario.artifacts);
   const artifacts: Record<string, string> = {};
 
@@ -149,7 +149,7 @@ export async function runWithoutTokenGuard(scenario: AgentTaskScenario): Promise
   const meter = provider.snapshot();
 
   return {
-    mode: "without-tokenguard",
+    mode: "without-tokenscache",
     upstreamCalls: meter.upstreamCalls,
     inputTokens: meter.inputTokens,
     outputTokens: meter.outputTokens,

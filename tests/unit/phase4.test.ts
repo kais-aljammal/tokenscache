@@ -13,7 +13,7 @@ describe("Phase 4 — L3 local cache", () => {
   let dbPath: string;
 
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), "tokenguard-l3-"));
+    dir = mkdtempSync(join(tmpdir(), "tokenscache-l3-"));
     dbPath = join(dir, "l3.db");
   });
 

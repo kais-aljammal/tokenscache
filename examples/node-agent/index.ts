@@ -1,9 +1,9 @@
 /**
- * Minimal TokenGuard usage — in-memory cache + mock provider (no API keys required).
+ * Minimal TokensCache usage — in-memory cache + mock provider (no API keys required).
  * Run: npx tsx examples/node-agent/index.ts
  */
 
-import { TokenGuard } from "../../src/index.js";
+import { TokensCache } from "../../src/index.js";
 import { ProviderAdapter, type ProviderAdapterConfig } from "../../src/core/providers/base.js";
 import type { ChatRequest, ChatResponse, TokenUsage } from "../../src/core/types.js";
 
@@ -34,7 +34,7 @@ class MockProvider extends ProviderAdapter {
 }
 
 async function main(): Promise<void> {
-  const guard = new TokenGuard({
+  const guard = new TokensCache({
     config: {
       providers: { mock: {} },
       cache: { l1: { maxEntries: 100 } },

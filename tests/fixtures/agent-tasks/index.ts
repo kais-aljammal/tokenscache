@@ -12,7 +12,7 @@ import type { AgentTaskScenario } from "./types.js";
 
 export * from "./types.js";
 
-/** Ten diverse agent coding tasks used to prove TokenGuard cache savings. */
+/** Ten diverse agent coding tasks used to prove TokensCache cache savings. */
 export const ALL_AGENT_TASKS: AgentTaskScenario[] = [
   cashierScenario,
   todoApiScenario,

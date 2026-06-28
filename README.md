@@ -1,4 +1,4 @@
-# TokenGuard
+# TokensCache
 
 AI token waste elimination and intelligent cache layer for multi-provider agents.
 
@@ -18,9 +18,9 @@ npm run build
 ### Minimal Node usage
 
 ```typescript
-import { TokenGuard } from "tokenguard";
+import { TokensCache } from "tokenscache";
 
-const guard = new TokenGuard({
+const guard = new TokensCache({
   config: {
     providers: { openai: { apiKey: process.env.OPENAI_API_KEY } },
     cache: { l1: { maxEntries: 500 } },
@@ -41,9 +41,9 @@ npx tsx examples/node-agent/index.ts
 
 ```bash
 npm run bench            # Cache hit-rate benchmark (200 prompts, 30% semantic overlap)
-npm run audit            # Token waste report from ./tokenguard.db
+npm run audit            # Token waste report from ./tokenscache.db
 npm run sync-pricing     # Verify config/pricing.json is ≤30 days old
-npm run cashier-compare  # A/B demo: agent with vs without TokenGuard
+npm run cashier-compare  # A/B demo: agent with vs without TokensCache
 ```
 
 Integration tests in `tests/integration/agent-tasks.test.ts` run 10 mock coding-agent scenarios and assert token savings with identical output. See [Test results](#test-results) below.
@@ -62,16 +62,16 @@ All numbers below are from the repo's automated test suite — no API keys requi
 
 ### 10 coding-agent scenarios (integration tests)
 
-Mock agents build real TypeScript modules (todo API, URL shortener, auth JWT, etc.) across **105 agent turns**. TokenGuard uses `agentArtifactScope` + `verified-decision` semantic matching.
+Mock agents build real TypeScript modules (todo API, URL shortener, auth JWT, etc.) across **105 agent turns**. TokensCache uses `agentArtifactScope` + `verified-decision` semantic matching.
 
-| Metric | Without TokenGuard | With TokenGuard | Savings |
+| Metric | Without TokensCache | With TokensCache | Savings |
 |--------|-------------------:|----------------:|--------:|
 | Upstream LLM calls | 105 | 66 | **37%** |
 | Total tokens billed | 42,066 | 27,136 | **35.5%** |
 | Cache hits | 0 | 39 | — |
 | Output identical | — | **yes** (all 10 tasks) | — |
 
-Per-task token savings range from **28%** to **39%**. Every scenario asserts identical generated code with vs without TokenGuard.
+Per-task token savings range from **28%** to **39%**. Every scenario asserts identical generated code with vs without TokensCache.
 
 ### Cashier A/B demo (`npm run cashier-compare`)
 
@@ -118,7 +118,7 @@ Request
 | **Budget** | `budget/*` | Real-dollar ledger and enforcement |
 | **Providers** | `providers/*` | Unified adapter interface |
 
-Browser apps import from `tokenguard/browser` (see [examples/browser-react/README.md](examples/browser-react/README.md)).
+Browser apps import from `tokenscache/browser` (see [examples/browser-react/README.md](examples/browser-react/README.md)).
 
 MCP integration guide: [examples/mcp-server/README.md](examples/mcp-server/README.md).
 
@@ -126,7 +126,7 @@ Agent cache demo: [examples/cashier-comparison/README.md](examples/cashier-compa
 
 ## Configuration reference
 
-Configuration is validated with Zod via `TokenGuardConfigSchema`.
+Configuration is validated with Zod via `TokensCacheConfigSchema`.
 
 ```typescript
 {
@@ -144,7 +144,7 @@ Configuration is validated with Zod via `TokenGuardConfigSchema`.
   cache?: {
     l1?: { maxEntries: number },                // default 500
     l2?: { dbName: string, maxSizeMB: number }, // browser
-    l3?: { dbPath: string, maxSizeMB: number },   // default ./tokenguard.db
+    l3?: { dbPath: string, maxSizeMB: number },   // default ./tokenscache.db
     semantic?: {
       highThreshold: number,      // default 0.92
       grayZoneMin: number,        // default 0.7
@@ -179,7 +179,7 @@ npm run sync-pricing
 
 ## License
 
-TokenGuard is released under the **[MIT License](LICENSE)**.
+TokensCache is released under the **[MIT License](LICENSE)**.
 
 Copyright (c) 2026 kaisj. You may use, modify, and distribute this software freely, including in commercial projects, as long as the license notice is included.
 

@@ -1,5 +1,5 @@
 {
-  "name": "tokenguard",
+  "name": "tokenscache",
   "version": "1.0.0",
   "description": "AI token waste elimination & intelligent cache layer for multi-provider agents",
   "type": "module",

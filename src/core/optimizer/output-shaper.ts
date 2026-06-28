@@ -30,7 +30,7 @@ export function shapeOutput(
 
     return {
       ...message,
-      content: `${message.content.slice(0, maxChars)}\n…[output shaped by TokenGuard]`,
+      content: `${message.content.slice(0, maxChars)}\n…[output shaped by TokensCache]`,
     };
   });
 }

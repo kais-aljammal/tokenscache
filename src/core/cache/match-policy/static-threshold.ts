@@ -26,7 +26,7 @@ export class StaticThresholdPolicy implements MatchPolicy {
     this.grayZoneMin = parsed.grayZoneMin;
 
     if (this.grayZoneMin > this.highThreshold) {
-      throw new Error("[TokenGuard] grayZoneMin must be <= highThreshold");
+      throw new Error("[TokensCache] grayZoneMin must be <= highThreshold");
     }
   }
 

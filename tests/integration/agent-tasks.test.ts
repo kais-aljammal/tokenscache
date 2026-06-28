@@ -1,12 +1,12 @@
 import { describe, it, expect } from "vitest";
 import { ALL_AGENT_TASKS } from "../fixtures/agent-tasks/index.js";
 import {
-  runWithTokenGuard,
-  runWithoutTokenGuard,
+  runWithTokensCache,
+  runWithoutTokensCache,
   artifactsIdentical,
 } from "../helpers/agent-task-runner.js";
 
-describe("Agent task scenarios — TokenGuard proof suite", () => {
+describe("Agent task scenarios — TokensCache proof suite", () => {
   it("defines 10 distinct coding agent tasks", () => {
     expect(ALL_AGENT_TASKS).toHaveLength(10);
     const ids = ALL_AGENT_TASKS.map((t) => t.id);
@@ -19,15 +19,15 @@ describe("Agent task scenarios — TokenGuard proof suite", () => {
 
   describe.each(ALL_AGENT_TASKS)("$name ($id)", (scenario) => {
     it("produces complete, valid artifacts", async () => {
-      const result = await runWithoutTokenGuard(scenario);
+      const result = await runWithoutTokensCache(scenario);
       const validation = scenario.validateArtifacts(result.artifacts);
       expect(validation.valid, validation.notes.join("; ")).toBe(true);
       expect(result.upstreamCalls).toBe(scenario.turns.length);
     });
 
     it("reduces upstream LLM calls via cache", async () => {
-      const withTg = await runWithTokenGuard(scenario);
-      const withoutTg = await runWithoutTokenGuard(scenario);
+      const withTg = await runWithTokensCache(scenario);
+      const withoutTg = await runWithoutTokensCache(scenario);
 
       expect(withTg.upstreamCalls).toBeLessThan(withoutTg.upstreamCalls);
       expect(withTg.cacheHits).toBeGreaterThanOrEqual(scenario.minCacheHits);
@@ -37,9 +37,9 @@ describe("Agent task scenarios — TokenGuard proof suite", () => {
       expect(callsSaved).toBeGreaterThan(0);
     });
 
-    it("returns identical output with and without TokenGuard", async () => {
-      const withTg = await runWithTokenGuard(scenario);
-      const withoutTg = await runWithoutTokenGuard(scenario);
+    it("returns identical output with and without TokensCache", async () => {
+      const withTg = await runWithTokensCache(scenario);
+      const withoutTg = await runWithoutTokensCache(scenario);
 
       expect(artifactsIdentical(withTg.artifacts, withoutTg.artifacts)).toBe(true);
 
@@ -50,8 +50,8 @@ describe("Agent task scenarios — TokenGuard proof suite", () => {
     });
 
     it("achieves meaningful token savings (>20%)", async () => {
-      const withTg = await runWithTokenGuard(scenario);
-      const withoutTg = await runWithoutTokenGuard(scenario);
+      const withTg = await runWithTokensCache(scenario);
+      const withoutTg = await runWithoutTokensCache(scenario);
 
       const savedPct =
         withoutTg.totalTokens > 0
@@ -69,8 +69,8 @@ describe("Agent task scenarios — TokenGuard proof suite", () => {
     let totalCallsSaved = 0;
 
     for (const scenario of ALL_AGENT_TASKS) {
-      const withTg = await runWithTokenGuard(scenario);
-      const withoutTg = await runWithoutTokenGuard(scenario);
+      const withTg = await runWithTokensCache(scenario);
+      const withoutTg = await runWithoutTokensCache(scenario);
       totalWith += withTg.totalTokens;
       totalWithout += withoutTg.totalTokens;
       totalHits += withTg.cacheHits;
@@ -97,7 +97,7 @@ describe("Agent task scenarios — complex multi-turn patterns", () => {
 
   it("auth-jwt task builds layered security modules", async () => {
     const auth = ALL_AGENT_TASKS.find((t) => t.id === "auth-jwt")!;
-    const result = await runWithTokenGuard(auth);
+    const result = await runWithTokensCache(auth);
 
     expect(result.artifacts.hash).toContain("verifyPassword");
     expect(result.artifacts.token).toContain("signToken");
@@ -108,7 +108,7 @@ describe("Agent task scenarios — complex multi-turn patterns", () => {
 
   it("inventory-wms task wires transfer + ledger + reorder", async () => {
     const wms = ALL_AGENT_TASKS.find((t) => t.id === "inventory-wms")!;
-    const result = await runWithTokenGuard(wms);
+    const result = await runWithTokensCache(wms);
 
     expect(result.artifacts.transfer).toContain("transferStock");
     expect(result.artifacts.ledger).toContain("StockLedger");
@@ -117,7 +117,7 @@ describe("Agent task scenarios — complex multi-turn patterns", () => {
 
   it("event-scheduler detects conflicts before booking", async () => {
     const sched = ALL_AGENT_TASKS.find((t) => t.id === "event-scheduler")!;
-    const result = await runWithoutTokenGuard(sched);
+    const result = await runWithoutTokensCache(sched);
 
     expect(result.artifacts.conflicts).toContain("hasConflict");
     expect(result.artifacts.calendar).toContain("findConflicts");

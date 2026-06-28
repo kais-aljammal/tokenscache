@@ -24,7 +24,7 @@ export interface L2BrowserCacheOptions {
  */
 export function sanitizeCacheKey(key: string): string {
   if (!/^[a-f0-9]{64}$/i.test(key)) {
-    throw new Error("[TokenGuard] Invalid cache key format");
+    throw new Error("[TokensCache] Invalid cache key format");
   }
   return key.toLowerCase();
 }
@@ -62,7 +62,7 @@ export class L2BrowserCache {
   }
 
   private requireDb(): IDBPDatabase {
-    if (!this.db) throw new Error("[TokenGuard] L2 cache not initialized — call init() first");
+    if (!this.db) throw new Error("[TokensCache] L2 cache not initialized — call init() first");
     return this.db;
   }
 

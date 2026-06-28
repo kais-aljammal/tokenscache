@@ -5,16 +5,16 @@ import type {
   ChatMessage,
   ChatRequest,
   ChatResponse,
-  TokenGuardConfig,
+  TokensCacheConfig,
 } from "./core/types.js";
-import { TokenGuardConfigSchema } from "./core/types.js";
+import { TokensCacheConfigSchema } from "./core/types.js";
 import { CacheRouter } from "./core/cache/cache-router.js";
 import { HashEmbeddingService } from "./core/cache/embedding.js";
 import { L3LocalCache } from "./core/cache/l3-local.js";
 import { SemanticMatcher } from "./core/cache/semantic-match.js";
 import { BudgetEnforcer } from "./core/budget/enforcer.js";
 import { BudgetLedger } from "./core/budget/ledger.js";
-import { openDatabase, type TokenGuardDatabase } from "./core/db/index.js";
+import { openDatabase, type TokensCacheDatabase } from "./core/db/index.js";
 import {
   alignForProviderCache,
   compressHistory,
@@ -23,19 +23,19 @@ import {
 } from "./core/optimizer/index.js";
 import type { ProviderAdapter } from "./core/providers/base.js";
 
-export interface TokenGuardOptions {
-  config: TokenGuardConfig;
+export interface TokensCacheOptions {
+  config: TokensCacheConfig;
   sessionId?: string;
   dbPath?: string;
 }
 
 /**
- * TokenGuard SDK — middleware for semantic caching, compression, and budget enforcement.
+ * TokensCache SDK — middleware for semantic caching, compression, and budget enforcement.
  */
-export class TokenGuard {
-  readonly config: TokenGuardConfig;
+export class TokensCache {
+  readonly config: TokensCacheConfig;
   private readonly sessionId: string;
-  private database: TokenGuardDatabase | null;
+  private database: TokensCacheDatabase | null;
   private ledger: BudgetLedger | null;
   private cacheRouter: CacheRouter | null = null;
   private budgetEnforcer: BudgetEnforcer | null = null;
@@ -43,8 +43,8 @@ export class TokenGuard {
   private _cacheHits = 0;
   private _cacheMisses = 0;
 
-  constructor(options: TokenGuardOptions) {
-    this.config = TokenGuardConfigSchema.parse(options.config);
+  constructor(options: TokensCacheOptions) {
+    this.config = TokensCacheConfigSchema.parse(options.config);
     this.sessionId = options.sessionId ?? crypto.randomUUID();
     this.database = null;
     this.ledger = null;
@@ -109,7 +109,7 @@ export class TokenGuard {
   registerProvider(adapter: ProviderAdapter): void {
     const baseUrl = adapter.getBaseUrl();
     if (baseUrl && !isAllowedUpstreamUrl(baseUrl)) {
-      throw new Error(`[TokenGuard] Provider baseUrl not whitelisted: ${baseUrl}`);
+      throw new Error(`[TokensCache] Provider baseUrl not whitelisted: ${baseUrl}`);
     }
     this.providers.set(adapter.name, adapter);
   }
@@ -194,7 +194,7 @@ export class TokenGuard {
 
     const adapter = this.providers.get(processed.provider);
     if (!adapter) {
-      throw new Error(`[TokenGuard] No provider registered: ${processed.provider}`);
+      throw new Error(`[TokensCache] No provider registered: ${processed.provider}`);
     }
 
     const response = await adapter.chat(processed);
@@ -277,8 +277,8 @@ export class TokenGuard {
   }
 }
 
-export { TokenGuardConfigSchema };
-export type { TokenGuardConfig, ChatRequest, ChatResponse, ChatMessage } from "./core/types.js";
+export { TokensCacheConfigSchema };
+export type { TokensCacheConfig, ChatRequest, ChatResponse, ChatMessage } from "./core/types.js";
 export { CacheManager, LRUEvictionPolicy, FIFOEvictionPolicy } from "./core/cache/cache-manager.js";
 export { ProviderAdapter } from "./core/providers/base.js";
 export { BudgetLedger, checkBudgetLimits } from "./core/budget/ledger.js";

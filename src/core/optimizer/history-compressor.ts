@@ -64,7 +64,7 @@ function localCompress(
       ? [
           {
             role: "system" as const,
-            content: `[TokenGuard] Compressed ${droppedTurns.length} earlier turns.`,
+            content: `[TokensCache] Compressed ${droppedTurns.length} earlier turns.`,
           },
         ]
       : [];

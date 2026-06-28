@@ -56,7 +56,7 @@ export interface DatabaseOptions {
   loadPricing?: boolean;
 }
 
-export interface TokenGuardDatabase {
+export interface TokensCacheDatabase {
   db: SqlJsDatabase;
   adapter: DatabaseAdapter;
   persist(): void;
@@ -76,7 +76,7 @@ async function getSqlJs(): Promise<Awaited<ReturnType<typeof initSqlJs>>> {
  * Open SQLite database via sql.js (WASM, no native build required).
  * Persists to disk on close() when dbPath is not :memory:.
  */
-export async function openDatabase(options: DatabaseOptions): Promise<TokenGuardDatabase> {
+export async function openDatabase(options: DatabaseOptions): Promise<TokensCacheDatabase> {
   const SQL = await getSqlJs();
   const isMemory = options.dbPath === ":memory:";
 

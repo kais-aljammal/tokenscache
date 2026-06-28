@@ -85,7 +85,7 @@ export class HashEmbeddingService implements EmbeddingProvider {
 
 export function cosineSimilarity(a: Float32Array, b: Float32Array): number {
   if (a.length !== b.length) {
-    throw new Error("[TokenGuard] Embedding dimension mismatch");
+    throw new Error("[TokensCache] Embedding dimension mismatch");
   }
 
   let dot = 0;

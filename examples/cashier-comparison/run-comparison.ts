@@ -1,5 +1,5 @@
 /**
- * Side-by-side comparison: agent WITH TokenGuard vs WITHOUT.
+ * Side-by-side comparison: agent WITH TokensCache vs WITHOUT.
  * Task: build a simple cashier system (code only).
  *
  * Run: npm run cashier-compare
@@ -8,7 +8,7 @@
 import { writeFileSync, mkdirSync, rmSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { TokenGuard } from "../../src/index.js";
+import { TokensCache } from "../../src/index.js";
 import { AGENT_TURNS, buildMessages } from "./agent-prompts.js";
 import { ARTIFACT_CODE, MeteredMockProvider } from "./mock-llm.js";
 
@@ -16,7 +16,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const OUT = join(__dirname, "results");
 
 interface RunResult {
-  mode: "with-tokenguard" | "without-tokenguard";
+  mode: "with-tokenscache" | "without-tokenscache";
   upstreamCalls: number;
   inputTokens: number;
   outputTokens: number;
@@ -27,12 +27,12 @@ interface RunResult {
   durationMs: number;
 }
 
-async function runWithTokenGuard(): Promise<RunResult> {
+async function runWithTokensCache(): Promise<RunResult> {
   const dbPath = join(OUT, "with-tg.db");
   if (existsSync(dbPath)) rmSync(dbPath, { force: true });
 
   const provider = new MeteredMockProvider();
-  const guard = new TokenGuard({
+  const guard = new TokensCache({
     config: {
       providers: { mock: {} },
       cache: {
@@ -74,7 +74,7 @@ async function runWithTokenGuard(): Promise<RunResult> {
   guard.close();
 
   return {
-    mode: "with-tokenguard",
+    mode: "with-tokenscache",
     upstreamCalls: meter.upstreamCalls,
     inputTokens: meter.inputTokens,
     outputTokens: meter.outputTokens,
@@ -86,7 +86,7 @@ async function runWithTokenGuard(): Promise<RunResult> {
   };
 }
 
-async function runWithoutTokenGuard(): Promise<RunResult> {
+async function runWithoutTokensCache(): Promise<RunResult> {
   const provider = new MeteredMockProvider();
   const artifacts: Record<string, string> = {};
   const start = performance.now();
@@ -107,7 +107,7 @@ async function runWithoutTokenGuard(): Promise<RunResult> {
   const meter = provider.snapshot();
 
   return {
-    mode: "without-tokenguard",
+    mode: "without-tokenscache",
     upstreamCalls: meter.upstreamCalls,
     inputTokens: meter.inputTokens,
     outputTokens: meter.outputTokens,
@@ -177,15 +177,15 @@ function artifactsIdentical(a: Record<string, string>, b: Record<string, string>
 async function main(): Promise<void> {
   mkdirSync(OUT, { recursive: true });
 
-  console.log("Cashier System — TokenGuard A/B Comparison");
+  console.log("Cashier System — TokensCache A/B Comparison");
   console.log("==========================================\n");
   console.log(`Task: ${AGENT_TURNS.length} agent turns building a TypeScript cashier (no UI)\n`);
 
-  const withTg = await runWithTokenGuard();
-  const withoutTg = await runWithoutTokenGuard();
+  const withTg = await runWithTokensCache();
+  const withoutTg = await runWithoutTokensCache();
 
-  writeOutput(join(OUT, "with-tokenguard"), withTg.artifacts);
-  writeOutput(join(OUT, "without-tokenguard"), withoutTg.artifacts);
+  writeOutput(join(OUT, "with-tokenscache"), withTg.artifacts);
+  writeOutput(join(OUT, "without-tokenscache"), withoutTg.artifacts);
 
   const savedTokens = withoutTg.totalTokens - withTg.totalTokens;
   const savedPct = withoutTg.totalTokens > 0 ? (savedTokens / withoutTg.totalTokens) * 100 : 0;
@@ -198,8 +198,8 @@ async function main(): Promise<void> {
   const report = {
     task: "Simple cashier system (TypeScript, no UI)",
     turns: AGENT_TURNS.length,
-    withTokenGuard: { ...withTg, quality: qualityWith },
-    withoutTokenGuard: { ...withoutTg, quality: qualityWithout },
+    withTokensCache: { ...withTg, quality: qualityWith },
+    withoutTokensCache: { ...withoutTg, quality: qualityWithout },
     savings: {
       tokensSaved: savedTokens,
       percentSaved: Math.round(savedPct * 10) / 10,
@@ -211,7 +211,7 @@ async function main(): Promise<void> {
 
   writeFileSync(join(OUT, "comparison.json"), JSON.stringify(report, null, 2), "utf-8");
 
-  console.log("WITH TokenGuard");
+  console.log("WITH TokensCache");
   console.log("---------------");
   console.log(`  Upstream LLM calls:  ${withTg.upstreamCalls}`);
   console.log(`  Input tokens billed: ${withTg.inputTokens.toLocaleString()}`);
@@ -221,7 +221,7 @@ async function main(): Promise<void> {
   console.log(`  Quality score:       ${qualityWith.overall}/10`);
   console.log(`  Duration:            ${withTg.durationMs}ms\n`);
 
-  console.log("WITHOUT TokenGuard");
+  console.log("WITHOUT TokensCache");
   console.log("------------------");
   console.log(`  Upstream LLM calls:  ${withoutTg.upstreamCalls}`);
   console.log(`  Input tokens billed: ${withoutTg.inputTokens.toLocaleString()}`);

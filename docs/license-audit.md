@@ -1,4 +1,4 @@
-# TokenGuard License Audit
+# TokensCache License Audit
 
 **Audit date:** 2026-06-29  
 **Auditor role:** Security Reviewer (Phase 1, blocking gate)  
@@ -9,7 +9,7 @@
 | Repo | SPDX / License Found | Determination | Notes |
 |------|---------------------|---------------|-------|
 | [zilliztech/GPTCache](https://github.com/zilliztech/GPTCache) | **MIT** | **COPY-ALLOWED** | PRD stated Apache 2.0; actual LICENSE is MIT. Both are permissive. Extract eviction-policy and cache-manager patterns. |
-| [vcache-project/vCache](https://github.com/vcache-project/vCache) | **CC BY-NC-ND 3.0** | **PATTERNS-ONLY — NO COPY** | NonCommercial + NoDerivatives. Cannot port source into MIT TokenGuard. v1.1 `VerifiedDecisionPolicy` must be reimplemented from published paper (arXiv:2502.03771), not from repo code. |
+| [vcache-project/vCache](https://github.com/vcache-project/vCache) | **CC BY-NC-ND 3.0** | **PATTERNS-ONLY — NO COPY** | NonCommercial + NoDerivatives. Cannot port source into MIT TokensCache. v1.1 `VerifiedDecisionPolicy` must be reimplemented from published paper (arXiv:2502.03771), not from repo code. |
 | [AgentBudget/agentbudget](https://github.com/AgentBudget/agentbudget) | **Apache-2.0** | **PATTERNS-ONLY** | Python-only. No TypeScript to port. Design session/ledger/budget-enforcement pattern in TS from understanding. |
 | [messkan/prompt-cache](https://github.com/messkan/prompt-cache) | **MIT** | **PATTERNS-ONLY** | Go server. Study dual-layer hash+semantic architecture; reimplement in TypeScript. |
 | [chopratejas/headroom](https://github.com/chopratejas/headroom) | **Apache-2.0** | **COPY-ALLOWED (dependency)** | Confirmed in-repo and on npm (`headroom-ai@0.22.4` → Apache-2.0). Use as runtime dependency for compression primitives. |

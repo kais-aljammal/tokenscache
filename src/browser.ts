@@ -3,8 +3,8 @@
  * Node-only modules (better-sqlite3) are excluded; L2/L3 use sql.js + IndexedDB in later phases.
  */
 export {
-  TokenGuard,
-  TokenGuardConfigSchema,
+  TokensCache,
+  TokensCacheConfigSchema,
   CacheManager,
   LRUEvictionPolicy,
   FIFOEvictionPolicy,
@@ -12,7 +12,7 @@ export {
 } from "./index.js";
 
 export type {
-  TokenGuardConfig,
+  TokensCacheConfig,
   ChatRequest,
   ChatResponse,
   ChatMessage,

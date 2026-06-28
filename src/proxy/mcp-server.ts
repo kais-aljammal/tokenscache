@@ -1,9 +1,9 @@
 import readline from "node:readline";
 import { pathToFileURL } from "node:url";
 import { readFileSync } from "node:fs";
-import { TokenGuard, type TokenGuardConfig } from "../index.js";
+import { TokensCache, type TokensCacheConfig } from "../index.js";
 import type { ChatMessage } from "../core/types.js";
-import { createTokenGuard } from "./server.js";
+import { createTokensCache } from "./server.js";
 
 export interface McpToolDefinition {
   name: string;
@@ -13,8 +13,8 @@ export interface McpToolDefinition {
 
 export const MCP_TOOLS: McpToolDefinition[] = [
   {
-    name: "tg_chat",
-    description: "Send a chat completion through TokenGuard cache and budget pipeline",
+    name: "tc_chat",
+    description: "Send a chat completion through TokensCache cache and budget pipeline",
     inputSchema: {
       type: "object",
       properties: {
@@ -36,12 +36,12 @@ export const MCP_TOOLS: McpToolDefinition[] = [
     },
   },
   {
-    name: "tg_cache_stats",
-    description: "Return TokenGuard cache hit/miss statistics",
+    name: "tc_cache_stats",
+    description: "Return TokensCache cache hit/miss statistics",
     inputSchema: { type: "object", properties: {} },
   },
   {
-    name: "tg_cache_invalidate",
+    name: "tc_cache_invalidate",
     description: "Invalidate cache entries by hash or clear all caches",
     inputSchema: {
       type: "object",
@@ -51,12 +51,12 @@ export const MCP_TOOLS: McpToolDefinition[] = [
     },
   },
   {
-    name: "tg_budget_status",
+    name: "tc_budget_status",
     description: "Return current session budget spend and limits",
     inputSchema: { type: "object", properties: {} },
   },
   {
-    name: "tg_compress_context",
+    name: "tc_compress_context",
     description: "Compress conversation history using the optimizer pipeline",
     inputSchema: {
       type: "object",
@@ -77,7 +77,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
     },
   },
   {
-    name: "tg_audit",
+    name: "tc_audit",
     description: "Return recent ledger audit entries for the current session",
     inputSchema: {
       type: "object",
@@ -138,7 +138,7 @@ function parseMessages(raw: unknown): ChatMessage[] {
 
 export async function handleMcpRequest(
   request: JsonRpcRequest,
-  tg: TokenGuard,
+  tg: TokensCache,
 ): Promise<JsonRpcResponse> {
   const id = request.id ?? null;
 
@@ -148,7 +148,7 @@ export async function handleMcpRequest(
         return rpcResult(id, {
           protocolVersion: "2024-11-05",
           capabilities: { tools: {} },
-          serverInfo: { name: "tokenguard-mcp", version: "0.1.0" },
+          serverInfo: { name: "tokenscache-mcp", version: "0.1.0" },
         });
 
       case "notifications/initialized":
@@ -181,14 +181,14 @@ export async function handleMcpRequest(
 }
 
 export async function executeMcpTool(
-  tg: TokenGuard,
+  tg: TokensCache,
   toolName: string,
   args: Record<string, unknown>,
 ): Promise<string> {
   await tg.init();
 
   switch (toolName) {
-    case "tg_chat": {
+    case "tc_chat": {
       const response = await tg.chat({
         provider: String(args.provider ?? "openai"),
         model: String(args.model ?? "gpt-4o-mini"),
@@ -196,20 +196,20 @@ export async function executeMcpTool(
       });
       return JSON.stringify(response, null, 2);
     }
-    case "tg_cache_stats":
+    case "tc_cache_stats":
       return JSON.stringify(tg.getCacheStats(), null, 2);
-    case "tg_cache_invalidate": {
+    case "tc_cache_invalidate": {
       const hash = typeof args.hash === "string" ? args.hash : undefined;
       await tg.invalidateCache(hash);
       return JSON.stringify({ invalidated: hash ?? "all" });
     }
-    case "tg_budget_status":
+    case "tc_budget_status":
       return JSON.stringify(tg.getBudgetStatus(), null, 2);
-    case "tg_compress_context": {
+    case "tc_compress_context": {
       const compressed = await tg.compressContext(parseMessages(args.messages));
       return JSON.stringify({ messages: compressed }, null, 2);
     }
-    case "tg_audit": {
+    case "tc_audit": {
       const limit = typeof args.limit === "number" ? args.limit : 50;
       return JSON.stringify(tg.getAuditLog(limit), null, 2);
     }
@@ -218,7 +218,7 @@ export async function executeMcpTool(
   }
 }
 
-export function startMcpServer(tg: TokenGuard): void {
+export function startMcpServer(tg: TokensCache): void {
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout, terminal: false });
 
   rl.on("line", (line) => {
@@ -241,10 +241,10 @@ export function startMcpServer(tg: TokenGuard): void {
   });
 }
 
-function loadConfigFromEnv(): TokenGuardConfig {
-  const configPath = process.env.TOKENGUARD_CONFIG;
+function loadConfigFromEnv(): TokensCacheConfig {
+  const configPath = process.env.TOKENSCACHE_CONFIG;
   if (configPath) {
-    return JSON.parse(readFileSync(configPath, "utf-8")) as TokenGuardConfig;
+    return JSON.parse(readFileSync(configPath, "utf-8")) as TokensCacheConfig;
   }
 
   return {
@@ -261,7 +261,7 @@ const isDirectRun =
 
 if (isDirectRun) {
   const config = loadConfigFromEnv();
-  const tg = createTokenGuard(config, process.env.TOKENGUARD_DB_PATH);
+  const tg = createTokensCache(config, process.env.TOKENSCACHE_DB_PATH);
   startMcpServer(tg);
-  process.stderr.write("[TokenGuard MCP] stdio JSON-RPC server ready\n");
+  process.stderr.write("[TokensCache MCP] stdio JSON-RPC server ready\n");
 }

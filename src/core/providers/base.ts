@@ -29,7 +29,7 @@ export abstract class ProviderAdapter {
   abstract getCheapestModel(currentModel: string): string;
 
   /**
-   * Normalize raw provider usage fields into TokenGuard's unified format.
+   * Normalize raw provider usage fields into TokensCache's unified format.
    */
   abstract normalizeUsage(raw: unknown): TokenUsage;
 
@@ -38,7 +38,7 @@ export abstract class ProviderAdapter {
    */
   protected requireApiKey(): string {
     if (!this.config.apiKey) {
-      throw new Error(`[TokenGuard] API key required for provider: ${this.name}`);
+      throw new Error(`[TokensCache] API key required for provider: ${this.name}`);
     }
     return this.config.apiKey;
   }

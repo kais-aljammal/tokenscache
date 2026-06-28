@@ -152,7 +152,7 @@ async function handleDashboardRequest(
   }
 
   if (req.method === "GET" && url.pathname === "/health") {
-    sendJson(res, 200, { status: "ok", service: "tokenguard-dashboard" });
+    sendJson(res, 200, { status: "ok", service: "tokenscache-dashboard" });
     return;
   }
 
@@ -166,9 +166,9 @@ export interface DashboardServerOptions {
 }
 
 export function startDashboardServer(options: DashboardServerOptions = {}): http.Server {
-  const port = options.port ?? Number(process.env.TOKENGUARD_DASHBOARD_PORT ?? 7432);
+  const port = options.port ?? Number(process.env.TOKENSCACHE_DASHBOARD_PORT ?? 7432);
   const host = options.host ?? "127.0.0.1";
-  const dbPath = options.dbPath ?? process.env.TOKENGUARD_DB_PATH ?? "./tokenguard.db";
+  const dbPath = options.dbPath ?? process.env.TOKENSCACHE_DB_PATH ?? "./tokenscache.db";
   const server = http.createServer(createDashboardHandler(dbPath));
   server.listen(port, host);
   return server;
@@ -178,11 +178,11 @@ const isDirectRun =
   process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href;
 
 if (isDirectRun) {
-  const port = Number(process.env.TOKENGUARD_DASHBOARD_PORT ?? 7432);
+  const port = Number(process.env.TOKENSCACHE_DASHBOARD_PORT ?? 7432);
   const server = startDashboardServer({ port });
   server.on("listening", () => {
     const addr = server.address();
     const boundPort = typeof addr === "object" && addr ? addr.port : port;
-    process.stderr.write(`[TokenGuard Dashboard] http://127.0.0.1:${boundPort}\n`);
+    process.stderr.write(`[TokensCache Dashboard] http://127.0.0.1:${boundPort}\n`);
   });
 }

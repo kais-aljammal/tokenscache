@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { CacheManager, LRUEvictionPolicy } from "../../src/core/cache/cache-manager.js";
-import { TokenGuard } from "../../src/index.js";
+import { TokensCache } from "../../src/index.js";
 import { openDatabase } from "../../src/core/db/index.js";
 import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
@@ -42,7 +42,7 @@ describe("SQLite schema", () => {
   let dbPath: string;
 
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), "tokenguard-"));
+    dir = mkdtempSync(join(tmpdir(), "tokenscache-"));
     dbPath = join(dir, "test.db");
   });
 
@@ -58,11 +58,11 @@ describe("SQLite schema", () => {
   });
 });
 
-describe("TokenGuard", () => {
+describe("TokensCache", () => {
   it("hashes prompts deterministically", () => {
     const messages = [{ role: "user" as const, content: "hello" }];
-    const h1 = TokenGuard.hashPrompt(messages);
-    const h2 = TokenGuard.hashPrompt(messages);
+    const h1 = TokensCache.hashPrompt(messages);
+    const h2 = TokensCache.hashPrompt(messages);
     expect(h1).toBe(h2);
     expect(h1).toHaveLength(64);
   });

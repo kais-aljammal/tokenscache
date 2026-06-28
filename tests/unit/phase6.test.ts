@@ -13,7 +13,7 @@ import { AnthropicProvider } from "../../src/core/providers/anthropic.js";
 import { OpenAIProvider } from "../../src/core/providers/openai.js";
 import { GeminiProvider } from "../../src/core/providers/gemini.js";
 import { openDatabase } from "../../src/core/db/index.js";
-import { TokenGuardConfigSchema } from "../../src/core/types.js";
+import { TokensCacheConfigSchema } from "../../src/core/types.js";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 
@@ -50,7 +50,7 @@ describe("Phase 6 — budget enforcer", () => {
   let dir: string;
 
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), "tokenguard-budget-"));
+    dir = mkdtempSync(join(tmpdir(), "tokenscache-budget-"));
   });
 
   afterEach(() => {
@@ -63,7 +63,7 @@ describe("Phase 6 — budget enforcer", () => {
       loadPricing: false,
     });
 
-    const config = TokenGuardConfigSchema.parse({
+    const config = TokensCacheConfigSchema.parse({
       providers: { openai: { apiKey: "test" } },
       budget: {
         hard: { usd: 0.001, action: "block" },

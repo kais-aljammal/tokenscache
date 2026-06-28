@@ -11,7 +11,7 @@ export const BudgetLimitSchema = z.object({
   action: BudgetActionSchema,
 });
 
-export const TokenGuardConfigSchema = z.object({
+export const TokensCacheConfigSchema = z.object({
   providers: z.record(
     z.string(),
     z.object({
@@ -32,13 +32,13 @@ export const TokenGuardConfigSchema = z.object({
       l1: z.object({ maxEntries: z.number().int().positive().default(500) }).optional(),
       l2: z
         .object({
-          dbName: z.string().default("tokenguard"),
+          dbName: z.string().default("tokenscache"),
           maxSizeMB: z.number().positive().default(100),
         })
         .optional(),
       l3: z
         .object({
-          dbPath: z.string().default("./tokenguard.db"),
+          dbPath: z.string().default("./tokenscache.db"),
           maxSizeMB: z.number().positive().default(1000),
         })
         .optional(),
@@ -71,7 +71,7 @@ export const TokenGuardConfigSchema = z.object({
     .optional(),
 });
 
-export type TokenGuardConfig = z.infer<typeof TokenGuardConfigSchema>;
+export type TokensCacheConfig = z.infer<typeof TokensCacheConfigSchema>;
 
 export interface ChatMessage {
   role: "system" | "user" | "assistant" | "tool";
