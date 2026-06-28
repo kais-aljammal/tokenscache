@@ -1,0 +1,40 @@
+{
+  "_meta": {
+    "last_verified": "2026-06-28",
+    "verify_before_relying": true,
+    "note": "Multiplier RULES (cache_read = 0.1x input, 5m cache_write = 1.25x input, 1h cache_write = 2x input) are documented as stable Anthropic policy and are more durable than the base rates themselves. OpenAI's cache discount has historically ranged 50-90% depending on model generation -- re-derive, don't assume 90%. Gemini explicit caching ALSO has an hourly storage cost not shown in this per-token table -- see cache_storage_usd_per_million_tokens_per_hour."
+  },
+  "anthropic": {
+    "opus_tier": { "input": 5.0, "output": 25.0, "cache_write_5m": 6.25, "cache_write_1h": 10.0, "cache_read": 0.5 },
+    "sonnet_tier": { "input": 3.0, "output": 15.0, "cache_write_5m": 3.75, "cache_write_1h": 6.0, "cache_read": 0.3 },
+    "haiku_tier": { "input": 1.0, "output": 5.0, "cache_write_5m": 1.25, "cache_write_1h": 2.0, "cache_read": 0.1 }
+  },
+  "openai": {
+    "flagship_tier": { "input": 5.0, "output": 30.0, "cached_input": 0.5 },
+    "mid_tier": { "input": 2.5, "output": 15.0, "cached_input": 0.25 },
+    "nano_tier": { "input": 0.2, "output": 1.25, "cached_input": 0.02 }
+  },
+  "google": {
+    "pro_tier": {
+      "input": 2.0,
+      "output": 12.0,
+      "cached_read": 0.2,
+      "cache_storage_usd_per_million_tokens_per_hour": 4.5,
+      "long_context_threshold_tokens": 200000,
+      "long_context_input": 4.0,
+      "long_context_output": 18.0
+    },
+    "flash_tier": {
+      "input": 0.5,
+      "output": 3.0,
+      "cached_read": 0.05,
+      "cache_storage_usd_per_million_tokens_per_hour": 1.0
+    },
+    "flash_lite_tier": {
+      "input": 0.1,
+      "output": 0.4,
+      "cached_read": 0.025,
+      "cache_storage_usd_per_million_tokens_per_hour": 1.0
+    }
+  }
+}

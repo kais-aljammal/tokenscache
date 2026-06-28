@@ -1,0 +1,17 @@
+node_modules/
+dist/
+coverage/
+.turbo/
+
+# Local databases and generated outputs
+*.db
+examples/cashier-comparison/results/
+
+# Environment and logs
+.env
+.env.*
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
