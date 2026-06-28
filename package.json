@@ -4,6 +4,26 @@
   "description": "AI token waste elimination & intelligent cache layer for multi-provider agents",
   "type": "module",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kais-aljammal/tokenscache.git"
+  },
+  "homepage": "https://github.com/kais-aljammal/tokenscache#readme",
+  "bugs": {
+    "url": "https://github.com/kais-aljammal/tokenscache/issues"
+  },
+  "keywords": [
+    "ai",
+    "llm",
+    "tokens",
+    "cache",
+    "semantic-cache",
+    "openai",
+    "anthropic",
+    "agent",
+    "budget",
+    "mcp"
+  ],
   "files": [
     "dist",
     "config",

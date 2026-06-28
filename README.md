@@ -9,10 +9,17 @@ AI token waste elimination and intelligent cache layer for multi-provider agents
 ## Quick start
 
 ```bash
+git clone https://github.com/kais-aljammal/tokenscache.git
+cd tokenscache
 npm install
-npm run typecheck
 npm test
 npm run build
+```
+
+Or install as a dependency (after npm publish):
+
+```bash
+npm install tokenscache
 ```
 
 ### Minimal Node usage
@@ -20,7 +27,7 @@ npm run build
 ```typescript
 import { TokensCache } from "tokenscache";
 
-const guard = new TokensCache({
+const cache = new TokensCache({
   config: {
     providers: { openai: { apiKey: process.env.OPENAI_API_KEY } },
     cache: { l1: { maxEntries: 500 } },
@@ -28,7 +35,7 @@ const guard = new TokensCache({
 });
 
 // Register a provider adapter, then:
-// const response = await guard.chat({ provider: "openai", model: "gpt-4o-mini", messages: [...] });
+// const response = await cache.chat({ provider: "openai", model: "gpt-4o-mini", messages: [...] });
 ```
 
 Run the mock demo (no API keys):
