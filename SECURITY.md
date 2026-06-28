@@ -10,7 +10,7 @@
 
 **Do not open public GitHub issues for security vulnerabilities.**
 
-Email security reports to the maintainers (replace with your contact) or use GitHub private security advisories if enabled.
+Report vulnerabilities via [GitHub Security Advisories](https://github.com/kais-aljammal/tokenscache/security/advisories/new) (preferred). Do not open public issues for security reports.
 
 Include:
 
@@ -47,6 +47,6 @@ We aim to acknowledge reports within 72 hours.
 
 Code from **vCache** (CC BY-NC-ND) and **token-optimizer** (PolyForm Noncommercial) must not be copied into this repository. Patterns-only reimplementation is documented in the license audit.
 
-## Security sign-off (Phase 1)
+## License compliance
 
-- **[SECURITY-OK]** License audit complete — see [docs/license-audit.md](docs/license-audit.md)
+Third-party license review is documented in [docs/license-audit.md](docs/license-audit.md).

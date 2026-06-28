@@ -1,8 +1,7 @@
 # TokensCache License Audit
 
-**Audit date:** 2026-06-29  
-**Auditor role:** Security Reviewer (Phase 1, blocking gate)  
-**Status:** Complete — zero unresolved flags
+**Last reviewed:** 2026-06-29  
+**Status:** Complete — no unresolved license flags
 
 ## Summary
 
@@ -28,11 +27,11 @@
 | `sql.js` | MIT | ALLOWED |
 | `idb` | ISC | ALLOWED |
 
-## Security Reviewer Sign-off
+## Sign-off
 
-- **[SECURITY-OK]** All primary source repos audited against actual LICENSE files (not PRD assumptions).
-- **Reclassification applied:** vCache downgraded from "verify at clone" to **PATTERNS-ONLY** due to CC BY-NC-ND 3.0 (more restrictive than assumed).
-- **Reclassification applied:** GPTCache corrected from Apache 2.0 to MIT (still COPY-ALLOWED).
-- **Reclassification applied:** token-optimizer confirmed PolyForm Noncommercial — NO COPY.
+- All primary source repos audited against actual LICENSE files.
+- vCache: **PATTERNS-ONLY** (CC BY-NC-ND 3.0).
+- GPTCache: MIT (COPY-ALLOWED).
+- token-optimizer: **PATTERNS-ONLY** (PolyForm Noncommercial).
 
-No unresolved flags. Phase 1 may proceed with code extraction per determinations above.
+No unresolved flags. All third-party code use follows the determinations above.

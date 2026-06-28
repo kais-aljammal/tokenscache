@@ -188,6 +188,6 @@ npm run sync-pricing
 
 TokensCache is released under the **[MIT License](LICENSE)**.
 
-Copyright (c) 2026 kaisj. You may use, modify, and distribute this software freely, including in commercial projects, as long as the license notice is included.
+You may use, modify, and distribute this software freely, including in commercial projects, as long as the license notice is included.
 
 Third-party inspiration and dependency licenses are documented in [docs/license-audit.md](docs/license-audit.md).
