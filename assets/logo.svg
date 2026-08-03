@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="TokensCache">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#101820"/>
+      <stop offset="100%" stop-color="#0B1218"/>
+    </linearGradient>
+    <linearGradient id="teal" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#5EEAD4"/>
+      <stop offset="100%" stop-color="#14B8A6"/>
+    </linearGradient>
+  </defs>
+  <rect width="128" height="128" rx="28" fill="url(#bg)"/>
+  <!-- hex vault -->
+  <path d="M64 22 L98 42 V86 L64 106 L30 86 V42 Z" fill="none" stroke="url(#teal)" stroke-width="4.5" stroke-linejoin="round"/>
+  <!-- token stacks -->
+  <rect x="46" y="48" width="36" height="8" rx="4" fill="#5EEAD4" opacity="0.95"/>
+  <rect x="50" y="60" width="28" height="8" rx="4" fill="#2DD4BF" opacity="0.85"/>
+  <rect x="54" y="72" width="20" height="8" rx="4" fill="#14B8A6" opacity="0.75"/>
+  <!-- cache pulse -->
+  <circle cx="64" cy="90" r="3.5" fill="#99F6E4"/>
+</svg>

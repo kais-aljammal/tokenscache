@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 220" role="img" aria-label="TokensCache banner">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0B1218"/>
+      <stop offset="55%" stop-color="#12202B"/>
+      <stop offset="100%" stop-color="#0E3A36"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#5EEAD4"/>
+      <stop offset="100%" stop-color="#34D399"/>
+    </linearGradient>
+    <pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse">
+      <path d="M24 0 H0 V24" fill="none" stroke="#1F3340" stroke-width="1"/>
+    </pattern>
+  </defs>
+  <rect width="960" height="220" rx="24" fill="url(#sky)"/>
+  <rect width="960" height="220" rx="24" fill="url(#grid)" opacity="0.35"/>
+  <!-- left mark -->
+  <g transform="translate(48,46)">
+    <path d="M64 8 L108 34 V86 L64 112 L20 86 V34 Z" fill="none" stroke="url(#accent)" stroke-width="5" stroke-linejoin="round"/>
+    <rect x="42" y="40" width="44" height="9" rx="4.5" fill="#5EEAD4"/>
+    <rect x="48" y="54" width="32" height="9" rx="4.5" fill="#2DD4BF" opacity="0.9"/>
+    <rect x="54" y="68" width="20" height="9" rx="4.5" fill="#14B8A6" opacity="0.8"/>
+  </g>
+  <!-- wordmark -->
+  <text x="220" y="100" fill="#F8FAFC" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="54" font-weight="700" letter-spacing="1">TokensCache</text>
+  <text x="224" y="142" fill="#99F6E4" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="20" letter-spacing="2">STOP PAYING TWICE FOR THE SAME THOUGHT</text>
+  <!-- right flow -->
+  <g opacity="0.85" fill="none" stroke="#5EEAD4" stroke-width="2">
+    <path d="M780 60 C820 60, 820 110, 860 110"/>
+    <path d="M760 90 C810 90, 810 140, 870 140"/>
+    <path d="M740 120 C800 120, 800 170, 850 170"/>
+  </g>
+  <circle cx="880" cy="110" r="5" fill="#5EEAD4"/>
+  <circle cx="890" cy="140" r="4" fill="#34D399"/>
+  <circle cx="870" cy="170" r="3.5" fill="#99F6E4"/>
+</svg>

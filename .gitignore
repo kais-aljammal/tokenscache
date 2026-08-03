@@ -2,16 +2,28 @@ node_modules/
 dist/
 coverage/
 .turbo/
+*.tsbuildinfo
 
 # Local databases and generated outputs
 *.db
+*.sqlite
+*.sqlite3
 examples/cashier-comparison/results/
 
-# Environment and logs
+# Environment, secrets, and logs
 .env
 .env.*
+!.env.example
+*.pem
+*.key
 *.log
+credentials*.json
+**/secrets/
 
-# OS
+# OS / editor noise
 .DS_Store
 Thumbs.db
+.idea/
+.vscode/
+*.swp
+*~
