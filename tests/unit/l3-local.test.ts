@@ -8,7 +8,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
-describe("Phase 4 — L3 local cache", () => {
+describe("L3 local cache", () => {
   let dir: string;
   let dbPath: string;
 

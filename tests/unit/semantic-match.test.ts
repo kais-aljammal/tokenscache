@@ -14,7 +14,7 @@ import {
 import { SemanticMatcher } from "../../src/core/cache/semantic-match.js";
 import type { ChatRequest, ChatResponse } from "../../src/core/types.js";
 
-describe("Phase 3 — embeddings", () => {
+describe("embeddings", () => {
   it("computes cosine similarity for identical vectors", () => {
     const a = new Float32Array([1, 0, 0]);
     const b = new Float32Array([1, 0, 0]);
@@ -38,7 +38,7 @@ describe("Phase 3 — embeddings", () => {
   });
 });
 
-describe("Phase 3 — match policies", () => {
+describe("match policies", () => {
   it("accepts high-similarity matches via static threshold", () => {
     const policy = new StaticThresholdPolicy({ highThreshold: 0.9, grayZoneMin: 0.7 });
     expect(policy.decide(0.95)).toBe("accept");
@@ -57,7 +57,7 @@ describe("Phase 3 — match policies", () => {
   });
 });
 
-describe("Phase 3 — semantic matcher", () => {
+describe("semantic matcher", () => {
   const response: ChatResponse = {
     id: "r1",
     content: "Paris is the capital of France.",

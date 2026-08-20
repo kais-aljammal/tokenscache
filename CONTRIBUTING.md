@@ -13,7 +13,7 @@ npm test
 npm run build
 ```
 
-Requires **Node.js 20+**.
+Requires **Node.js 20+**. Copy `.env.example` to `.env` for live provider calls; never commit `.env`.
 
 ## Project structure
 

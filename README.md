@@ -17,7 +17,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/kais-aljammal/tokenscache/actions"><img alt="build" src="https://img.shields.io/badge/tests-92%2F92-14b8a6?style=for-the-badge&labelColor=0b1218"/></a>
+  <a href="https://github.com/kais-aljammal/tokenscache/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/kais-aljammal/tokenscache/ci.yml?style=for-the-badge&label=CI&labelColor=0b1218"/></a>
   <img alt="version" src="https://img.shields.io/badge/v1.0.0-stable-2dd4bf?style=for-the-badge&labelColor=0b1218"/>
   <img alt="license" src="https://img.shields.io/badge/license-MIT-5eead4?style=for-the-badge&labelColor=0b1218"/>
   <img alt="node" src="https://img.shields.io/badge/node-%3E%3D20-34d399?style=for-the-badge&labelColor=0b1218"/>
@@ -71,11 +71,9 @@ npm test
 npm run build
 ```
 
-Or install as a dependency (after npm publish):
+Copy `.env.example` to `.env` only if you are calling real providers — never commit that file.
 
-```bash
-npm install tokenscache
-```
+The package is not on npm yet — clone and use it from source (or `npm pack` / a local `file:` install after `npm run build`).
 
 ### Minimal Node usage
 

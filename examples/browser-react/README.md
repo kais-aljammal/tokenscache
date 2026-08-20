@@ -57,7 +57,7 @@ export function useTokensCache() {
 
 - Cache keys are SHA-256 hashes of normalized prompts — keys are validated to prevent injection.
 - Set `cache.l2.maxSizeMB` to cap storage; oldest entries evict under pressure.
-- L2 is async; warm L1 on hits via `CacheRouter` (Phase 2) for sub-millisecond repeat lookups.
+- L2 is async; warm L1 on hits via `CacheRouter` for sub-millisecond repeat lookups.
 
 ## Security
 

@@ -19,7 +19,7 @@ import { tmpdir } from "node:os";
 
 const pricingPath = join(fileURLToPath(new URL("../../config/pricing.json", import.meta.url)));
 
-describe("Phase 6 — pricing", () => {
+describe("pricing", () => {
   beforeEach(() => clearPricingCache());
 
   it("loads pricing.json", () => {
@@ -46,7 +46,7 @@ describe("Phase 6 — pricing", () => {
   });
 });
 
-describe("Phase 6 — budget enforcer", () => {
+describe("budget enforcer", () => {
   let dir: string;
 
   beforeEach(() => {
@@ -92,7 +92,7 @@ describe("Phase 6 — budget enforcer", () => {
   });
 });
 
-describe("Phase 6 — model router", () => {
+describe("model router", () => {
   it("downgrades flagship models", () => {
     const router = new ModelRouter();
     const routed = router.route(
@@ -107,7 +107,7 @@ describe("Phase 6 — model router", () => {
   });
 });
 
-describe("Phase 6 — provider adapters", () => {
+describe("provider adapters", () => {
   it("normalizes Anthropic usage", () => {
     const provider = new AnthropicProvider({ apiKey: "test" });
     const usage = provider.normalizeUsage({

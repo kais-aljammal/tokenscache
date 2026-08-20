@@ -6,7 +6,7 @@ import { shapeOutput } from "../../src/core/optimizer/output-shaper.js";
 import { alignForProviderCache } from "../../src/core/optimizer/cache-aligner.js";
 import type { ChatMessage } from "../../src/core/types.js";
 
-describe("Phase 5 — optimizer", () => {
+describe("optimizer", () => {
   it("prunes irrelevant tools", () => {
     const tools = [
       { function: { name: "search_web", description: "Search the web" } },

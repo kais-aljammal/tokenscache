@@ -79,7 +79,7 @@ function requestJson(
   });
 }
 
-describe("Phase 7 — proxy routing", () => {
+describe("proxy routing", () => {
   it("allows whitelisted provider domains", () => {
     expect(isAllowedProviderHost("api.openai.com")).toBe(true);
     expect(isAllowedProviderHost("api.anthropic.com")).toBe(true);
@@ -134,7 +134,7 @@ describe("Phase 7 — proxy routing", () => {
   });
 });
 
-describe("Phase 7 — MCP server", () => {
+describe("MCP server", () => {
   let tg: TokensCache;
 
   beforeEach(() => {
@@ -193,7 +193,7 @@ describe("Phase 7 — MCP server", () => {
   });
 });
 
-describe("Phase 7 — dashboard endpoints", () => {
+describe("dashboard endpoints", () => {
   let dir: string;
   let dbPath: string;
 
@@ -274,7 +274,7 @@ describe("Phase 7 — dashboard endpoints", () => {
   });
 });
 
-describe("Phase 7 — TokensCache pipeline", () => {
+describe("TokensCache pipeline", () => {
   it("uses CacheRouter for repeated chat requests", async () => {
     const tg = new TokensCache({
       config: { providers: { openai: { apiKey: "test" } } },
