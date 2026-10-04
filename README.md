@@ -120,7 +120,7 @@ All numbers below are from the repo's automated test suite — no API keys requi
 
 | Check | Result |
 |-------|--------|
-| Unit + integration tests | **92 / 92 passing** |
+| Unit + integration tests | **139 / 139 passing** |
 | TypeScript | zero errors (`npm run typecheck`) |
 | Build | ESM + DTS (`npm run build`) |
 
@@ -209,14 +209,17 @@ Configuration is validated with Zod via `TokensCacheConfigSchema`.
     includeCacheStorageHoldingCosts?: boolean,  // default true
   },
   cache?: {
-    l1?: { maxEntries: number },                // default 500
-    l2?: { dbName: string, maxSizeMB: number }, // browser
-    l3?: { dbPath: string, maxSizeMB: number }, // default ./tokenscache.db
+    l1?: { maxEntries: number, ttlMs?: number }, // default 500
+    l2?: { dbName: string, maxSizeMB: number },  // browser
+    l3?: { dbPath: string, maxSizeMB: number, maxEntries?: number },
     semantic?: {
       highThreshold: number,      // default 0.92
       grayZoneMin: number,        // default 0.7
       matchPolicy: "static-threshold" | "verified-decision",
+      maxCandidates?: number,
     },
+    includeModelInKey?: boolean,  // default true — gpt-4o ≠ gpt-4o-mini
+    includeToolsInKey?: boolean,  // default true
     agentArtifactScope?: boolean, // reuse cache per metadata.artifact
     gemini?: { explicitCacheSafetyMargin: number },
   },

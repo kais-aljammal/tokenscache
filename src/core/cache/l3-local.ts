@@ -13,7 +13,17 @@ import {
 export interface L3LocalCacheOptions {
   adapter: DatabaseAdapter;
   maxEntries?: number;
+  maxSizeBytes?: number;
   embeddingProvider?: EmbeddingProvider;
+}
+
+export interface L3GetByHashFilter {
+  provider?: string;
+  model?: string;
+}
+
+export interface L3SetOptions {
+  ttlMs?: number;
 }
 
 interface AnnIndex {
@@ -125,6 +135,7 @@ async function createAnnIndex(dimensions: number): Promise<AnnIndex> {
 export class L3LocalCache {
   private readonly adapter: DatabaseAdapter;
   private readonly maxEntries: number;
+  private readonly maxSizeBytes?: number;
   private readonly embedder: EmbeddingProvider;
   private ann: AnnIndex | null = null;
   private readonly keyToRowId = new Map<number, string>();
@@ -134,6 +145,7 @@ export class L3LocalCache {
   constructor(options: L3LocalCacheOptions) {
     this.adapter = options.adapter;
     this.maxEntries = options.maxEntries ?? 50_000;
+    this.maxSizeBytes = options.maxSizeBytes;
     this.embedder = options.embeddingProvider ?? new HashEmbeddingService();
   }
 
@@ -142,15 +154,30 @@ export class L3LocalCache {
     await this.rebuildIndex();
   }
 
-  async getByHash(hash: string): Promise<ChatResponse | undefined> {
+  async getByHash(hash: string, filter?: L3GetByHashFilter): Promise<ChatResponse | undefined> {
+    const conditions = [
+      "prompt_hash = ?",
+      "(expires_at IS NULL OR expires_at >= datetime('now'))",
+    ];
+    const params: unknown[] = [hash];
+
+    if (filter?.provider) {
+      conditions.push("provider = ?");
+      params.push(filter.provider);
+    }
+    if (filter?.model) {
+      conditions.push("model = ?");
+      params.push(filter.model);
+    }
+
     const row = this.adapter
       .prepare(
         `SELECT id, response FROM cache_entries
-         WHERE prompt_hash = ?
+         WHERE ${conditions.join(" AND ")}
          ORDER BY last_accessed_at DESC
          LIMIT 1`,
       )
-      .get(hash) as { id: string; response: string } | undefined;
+      .get(...params) as { id: string; response: string } | undefined;
 
     if (!row) return undefined;
 
@@ -162,17 +189,18 @@ export class L3LocalCache {
     return { ...response, cached: true, cacheLayer: "L3" };
   }
 
-  async set(hash: string, request: ChatRequest, response: ChatResponse): Promise<void> {
+  async set(hash: string, request: ChatRequest, response: ChatResponse, options?: L3SetOptions): Promise<void> {
     const promptNormalized = serializePrompt(request.messages);
     const embedding = await this.embedder.embed(
       promptTextFromMessages(request.messages, { userOnly: true }),
     );
     const embeddingBlob = embeddingToBlob(embedding);
     const serialized = JSON.stringify({ ...response, cached: true, cacheLayer: "L3" });
+    const expiresAt = expiresAtFromTtl(options?.ttlMs);
 
     const existing = this.adapter
-      .prepare(`SELECT id FROM cache_entries WHERE prompt_hash = ? LIMIT 1`)
-      .get(hash) as { id: string } | undefined;
+      .prepare(`SELECT id FROM cache_entries WHERE prompt_hash = ? AND provider = ? AND model = ? LIMIT 1`)
+      .get(hash, request.provider, request.model) as { id: string } | undefined;
 
     const id = existing?.id ?? randomUUID();
 
@@ -181,19 +209,19 @@ export class L3LocalCache {
         .prepare(
           `UPDATE cache_entries
            SET prompt_normalized = ?, response = ?, embedding = ?, provider = ?, model = ?,
-               last_accessed_at = datetime('now')
+               last_accessed_at = datetime('now'), expires_at = ?
            WHERE id = ?`,
         )
-        .run(promptNormalized, serialized, embeddingBlob, request.provider, request.model, id);
+        .run(promptNormalized, serialized, embeddingBlob, request.provider, request.model, expiresAt, id);
       this.removeFromIndex(id);
     } else {
       this.adapter
         .prepare(
           `INSERT INTO cache_entries
-           (id, prompt_hash, prompt_normalized, response, embedding, provider, model)
-           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+           (id, prompt_hash, prompt_normalized, response, embedding, provider, model, expires_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         )
-        .run(id, hash, promptNormalized, serialized, embeddingBlob, request.provider, request.model);
+        .run(id, hash, promptNormalized, serialized, embeddingBlob, request.provider, request.model, expiresAt);
     }
 
     this.addToIndex(id, embedding);
@@ -281,24 +309,49 @@ export class L3LocalCache {
     }
   }
 
-  private async evictIfNeeded(): Promise<void> {
-    const count = await this.size();
-    if (count <= this.maxEntries) return;
+  private evictRow(id: string): void {
+    this.removeFromIndex(id);
+    this.adapter.prepare(`DELETE FROM cache_entries WHERE id = ?`).run(id);
+  }
 
-    const overflow = count - this.maxEntries;
+  private evictLeastValuable(limit: number): void {
+    if (limit <= 0) return;
     const victims = this.adapter
       .prepare(
         `SELECT id FROM cache_entries
-         ORDER BY last_accessed_at ASC
+         ORDER BY hit_count ASC, last_accessed_at ASC
          LIMIT ?`,
       )
-      .all(overflow) as Array<{ id: string }>;
+      .all(limit) as Array<{ id: string }>;
 
     for (const victim of victims) {
-      this.removeFromIndex(victim.id);
-      this.adapter.prepare(`DELETE FROM cache_entries WHERE id = ?`).run(victim.id);
+      this.evictRow(victim.id);
+    }
+  }
+
+  private async evictIfNeeded(): Promise<void> {
+    const count = await this.size();
+    if (count > this.maxEntries) {
+      this.evictLeastValuable(count - this.maxEntries);
+    }
+
+    if (this.maxSizeBytes === undefined) return;
+
+    while (true) {
+      const remaining = await this.size();
+      if (remaining === 0) return;
+
+      const row = this.adapter
+        .prepare(`SELECT COALESCE(SUM(length(response)), 0) as total FROM cache_entries`)
+        .get() as { total: number };
+      if (row.total <= this.maxSizeBytes) return;
+
+      this.evictLeastValuable(1);
     }
   }
 }
 
-export const L3_LOCAL_PHASE = 4 as const;
+function expiresAtFromTtl(ttlMs?: number): string | null {
+  if (ttlMs === undefined) return null;
+  return new Date(Date.now() + ttlMs).toISOString().replace("T", " ").replace(/\.\d{3}Z$/, "");
+}

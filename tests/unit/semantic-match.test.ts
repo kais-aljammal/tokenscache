@@ -112,5 +112,109 @@ describe("semantic matcher", () => {
     });
 
     expect(miss).toBeNull();
+    expect(matcher.getStats()).toEqual({ size: 1, hits: 0, misses: 1 });
+  });
+
+  it("does not return a hit for a different provider", async () => {
+    const matcher = new SemanticMatcher({
+      highThreshold: 0.5,
+      grayZoneMin: 0.3,
+      embeddingProvider: new HashEmbeddingService(64),
+    });
+
+    const openaiRequest: ChatRequest = {
+      provider: "openai",
+      model: "gpt-4o-mini",
+      messages: [{ role: "user", content: "What is the capital of France?" }],
+    };
+
+    await matcher.index(openaiRequest, response, "hash-openai");
+
+    const geminiRequest: ChatRequest = {
+      provider: "gemini",
+      model: "gemini-2.0-flash",
+      messages: openaiRequest.messages,
+    };
+
+    const miss = await matcher.findSimilar(geminiRequest);
+    expect(miss).toBeNull();
+    expect(matcher.getStats().misses).toBe(1);
+    expect(matcher.getStats().hits).toBe(0);
+  });
+
+  it("hits a paraphrase for the same provider and model at a low threshold", async () => {
+    const matcher = new SemanticMatcher({
+      highThreshold: 0.5,
+      grayZoneMin: 0.3,
+      embeddingProvider: new HashEmbeddingService(64),
+    });
+
+    const request: ChatRequest = {
+      provider: "openai",
+      model: "gpt-4o-mini",
+      messages: [{ role: "user", content: "What is the capital of France?" }],
+    };
+
+    await matcher.index(request, response, "hash-paraphrase");
+
+    const paraphrase: ChatRequest = {
+      ...request,
+      messages: [{ role: "user", content: "What is the capital of France" }],
+    };
+
+    const hit = await matcher.findSimilar(paraphrase);
+    expect(hit).not.toBeNull();
+    expect(hit?.matchedHash).toBe("hash-paraphrase");
+    expect(hit?.response.content).toContain("Paris");
+    expect(matcher.getStats().hits).toBe(1);
+    expect(matcher.getStats().misses).toBe(0);
+  });
+
+  it("delete(hash) removes a candidate", async () => {
+    const matcher = new SemanticMatcher({
+      embeddingProvider: new HashEmbeddingService(64),
+    });
+
+    const request: ChatRequest = {
+      provider: "openai",
+      model: "gpt-4o-mini",
+      messages: [{ role: "user", content: "What is the capital of France?" }],
+    };
+
+    await matcher.index(request, response, "hash-delete");
+    expect(matcher.size()).toBe(1);
+    expect(matcher.delete("hash-delete")).toBe(true);
+    expect(matcher.size()).toBe(0);
+    expect(matcher.delete("hash-delete")).toBe(false);
+    expect(matcher.getStats().size).toBe(0);
+  });
+
+  it("overflow evicts the least-recently-used candidate", async () => {
+    const matcher = new SemanticMatcher({
+      highThreshold: 0.5,
+      grayZoneMin: 0.3,
+      embeddingProvider: new HashEmbeddingService(64),
+      maxCandidates: 2,
+    });
+
+    const makeRequest = (content: string): ChatRequest => ({
+      provider: "openai",
+      model: "gpt-4o-mini",
+      messages: [{ role: "user", content }],
+    });
+
+    await matcher.index(makeRequest("alpha prompt one"), { ...response, id: "r-a" }, "hash-1");
+    await matcher.index(makeRequest("beta prompt two"), { ...response, id: "r-b" }, "hash-2");
+    expect(matcher.size()).toBe(2);
+
+    const touch = await matcher.findSimilar(makeRequest("alpha prompt one"));
+    expect(touch?.matchedHash).toBe("hash-1");
+
+    await matcher.index(makeRequest("gamma prompt three"), { ...response, id: "r-c" }, "hash-3");
+
+    expect(matcher.size()).toBe(2);
+    expect(matcher.delete("hash-2")).toBe(false);
+    expect(matcher.delete("hash-1")).toBe(true);
+    expect(matcher.delete("hash-3")).toBe(true);
   });
 });

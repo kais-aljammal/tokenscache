@@ -7,7 +7,7 @@ import type { ChatMessage } from "../types.js";
 export function normalizeMessages(messages: ChatMessage[]): ChatMessage[] {
   return messages.map((m) => ({
     role: m.role,
-    content: m.content.trim().replace(/\s+/g, " "),
+    content: m.content.normalize("NFC").trim().replace(/\s+/g, " "),
   }));
 }
 
@@ -40,4 +40,56 @@ export async function hashPromptAsync(messages: ChatMessage[]): Promise<string> 
 export function hashPromptSync(messages: ChatMessage[]): string {
   const data = serializePrompt(messages);
   return createHash("sha256").update(data).digest("hex");
+}
+
+export interface CacheKeyInput {
+  messages: Array<{ role: string; content: string }>;
+  provider?: string;
+  model?: string;
+  tools?: unknown[];
+  /** Default true when provider/model provided. */
+  includeModel?: boolean;
+  /** Default true when tools provided. */
+  includeTools?: boolean;
+}
+
+function stableStringify(value: unknown): string {
+  return JSON.stringify(value, (_key, val: unknown) => {
+    if (val && typeof val === "object" && !Array.isArray(val)) {
+      return Object.fromEntries(
+        Object.entries(val as Record<string, unknown>).sort(([a], [b]) => a.localeCompare(b)),
+      );
+    }
+    return val;
+  });
+}
+
+/**
+ * Serialize messages plus optional provider/model/tools into a stable cache key.
+ */
+export function serializeCacheKey(input: CacheKeyInput): string {
+  const includeModel = input.includeModel ?? (input.provider != null || input.model != null);
+  const includeTools = input.includeTools ?? input.tools != null;
+
+  const payload: Record<string, unknown> = {
+    messages: normalizeMessages(input.messages as ChatMessage[]),
+  };
+
+  if (includeModel) {
+    if (input.provider !== undefined) payload.provider = input.provider;
+    if (input.model !== undefined) payload.model = input.model;
+  }
+
+  if (includeTools) {
+    payload.tools = input.tools ?? [];
+  }
+
+  return stableStringify(payload);
+}
+
+/**
+ * SHA-256 hash of a full cache key (Node.js).
+ */
+export function hashCacheKey(input: CacheKeyInput): string {
+  return createHash("sha256").update(serializeCacheKey(input)).digest("hex");
 }

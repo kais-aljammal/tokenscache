@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { hashPromptSync, normalizeMessages, serializePrompt } from "../../src/core/cache/hash.js";
+import { hashCacheKey, hashPromptSync, normalizeMessages, serializePrompt } from "../../src/core/cache/hash.js";
 import { L1MemoryCache } from "../../src/core/cache/l1-memory.js";
 import { sanitizeCacheKey } from "../../src/core/cache/l2-browser.js";
 import { CacheRouter } from "../../src/core/cache/cache-router.js";
@@ -30,6 +30,26 @@ describe("hash", () => {
     const b = [{ role: "user" as const, content: "b" }];
     expect(hashPromptSync(a)).not.toBe(hashPromptSync(b));
   });
+
+  it("hashCacheKey is deterministic SHA-256", () => {
+    const input = { messages: [{ role: "user", content: "test" }], provider: "openai", model: "gpt-4" };
+    expect(hashCacheKey(input)).toBe(hashCacheKey(input));
+    expect(hashCacheKey(input)).toHaveLength(64);
+  });
+
+  it("hashCacheKey isolates models when includeModel is true", () => {
+    const messages = [{ role: "user", content: "hello" }];
+    const a = hashCacheKey({ messages, provider: "openai", model: "gpt-4", includeModel: true });
+    const b = hashCacheKey({ messages, provider: "openai", model: "gpt-4o", includeModel: true });
+    expect(a).not.toBe(b);
+  });
+
+  it("hashCacheKey isolates tools when includeTools is true", () => {
+    const messages = [{ role: "user", content: "hello" }];
+    const a = hashCacheKey({ messages, tools: [{ name: "search" }], includeTools: true });
+    const b = hashCacheKey({ messages, tools: [{ name: "fetch" }], includeTools: true });
+    expect(a).not.toBe(b);
+  });
 });
 
 describe("L1MemoryCache", () => {
@@ -44,6 +64,16 @@ describe("L1MemoryCache", () => {
     cache.set(hash, mockResponse("hello"));
     expect(cache.get(hash)?.content).toBe("hello");
     expect(cache.get(hash)?.cacheLayer).toBe("L1");
+  });
+
+  it("returns a shallow clone so callers cannot mutate stored entries", () => {
+    const hash = hashPromptSync([{ role: "user", content: "hi" }]);
+    cache.set(hash, mockResponse("hello"));
+    const retrieved = cache.get(hash)!;
+    retrieved.content = "mutated";
+    retrieved.cached = false;
+    expect(cache.get(hash)?.content).toBe("hello");
+    expect(cache.get(hash)?.cached).toBe(true);
   });
 });
 

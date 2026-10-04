@@ -103,4 +103,78 @@ describe("L3 local cache", () => {
     expect(await cache.size()).toBe(2);
     close();
   });
+
+  it("filters getByHash by provider and model for the same prompt hash", async () => {
+    const { adapter, close } = await openDatabase({ dbPath: ":memory:", loadPricing: false });
+    const cache = new L3LocalCache({
+      adapter,
+      embeddingProvider: new HashEmbeddingService(16),
+    });
+    await cache.init();
+
+    const hash = hashPromptSync(request.messages);
+    await cache.set(hash, { ...request, model: "a" }, { ...response, content: "from-a", model: "a" });
+    await cache.set(hash, { ...request, model: "b" }, { ...response, content: "from-b", model: "b" });
+
+    const hitA = await cache.getByHash(hash, { model: "a" });
+    const hitB = await cache.getByHash(hash, { model: "b" });
+    const unfiltered = await cache.getByHash(hash);
+
+    expect(hitA?.content).toBe("from-a");
+    expect(hitB?.content).toBe("from-b");
+    expect(unfiltered?.content).toBeDefined();
+    expect(await cache.size()).toBe(2);
+
+    close();
+  });
+
+  it("does not return expired entries", async () => {
+    const { adapter, close } = await openDatabase({ dbPath: ":memory:", loadPricing: false });
+    const cache = new L3LocalCache({
+      adapter,
+      embeddingProvider: new HashEmbeddingService(16),
+    });
+    await cache.init();
+
+    const hash = hashPromptSync(request.messages);
+    await cache.set(hash, request, response, { ttlMs: -2_000 });
+
+    const row = adapter
+      .prepare(`SELECT expires_at FROM cache_entries WHERE prompt_hash = ?`)
+      .get(hash) as { expires_at: string };
+    expect(row.expires_at).toBeTruthy();
+    expect(await cache.getByHash(hash)).toBeUndefined();
+
+    close();
+  });
+
+  it("keeps a frequently hit entry when maxEntries overflows", async () => {
+    const { adapter, close } = await openDatabase({ dbPath: ":memory:", loadPricing: false });
+    const cache = new L3LocalCache({
+      adapter,
+      embeddingProvider: new HashEmbeddingService(16),
+      maxEntries: 2,
+    });
+    await cache.init();
+
+    const reqA: ChatRequest = { ...request, messages: [{ role: "user", content: "keep me" }] };
+    const reqB: ChatRequest = { ...request, messages: [{ role: "user", content: "evict me" }] };
+    const reqC: ChatRequest = { ...request, messages: [{ role: "user", content: "newcomer" }] };
+    const hashA = hashPromptSync(reqA.messages);
+    const hashB = hashPromptSync(reqB.messages);
+    const hashC = hashPromptSync(reqC.messages);
+
+    await cache.set(hashA, reqA, { ...response, content: "resp-a" });
+    await cache.set(hashB, reqB, { ...response, content: "resp-b" });
+    await cache.getByHash(hashA);
+    await cache.getByHash(hashA);
+    await cache.set(hashC, reqC, { ...response, content: "resp-c" });
+
+    expect(await cache.size()).toBe(2);
+    expect((await cache.getByHash(hashA))?.content).toBe("resp-a");
+    expect(await cache.getByHash(hashB)).toBeUndefined();
+    expect((await cache.getByHash(hashC))?.content).toBe("resp-c");
+
+    close();
+  });
 });

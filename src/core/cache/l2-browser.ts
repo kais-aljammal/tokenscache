@@ -12,12 +12,21 @@ export interface L2CacheEntry {
   createdAt: number;
   lastAccessedAt: number;
   sizeBytes: number;
+  expiresAt?: number;
 }
 
 export interface L2BrowserCacheOptions {
   dbName: string;
   maxSizeMB: number;
+  defaultTtlMs?: number;
 }
+
+export interface L2GetFilter {
+  provider?: string;
+  model?: string;
+}
+
+export type L2EntryVerdict = "miss" | "expired" | "mismatch" | "hit";
 
 /**
  * Sanitize IndexedDB keys — prevent injection via user-controlled hash strings.
@@ -29,6 +38,31 @@ export function sanitizeCacheKey(key: string): string {
   return key.toLowerCase();
 }
 
+export function isL2EntryExpired(entry: Pick<L2CacheEntry, "expiresAt">, now: number): boolean {
+  return entry.expiresAt !== undefined && now >= entry.expiresAt;
+}
+
+export function resolveL2ExpiresAt(
+  now: number,
+  ttlMs?: number,
+  defaultTtlMs?: number,
+): number | undefined {
+  const ttl = ttlMs ?? defaultTtlMs;
+  return ttl === undefined ? undefined : now + ttl;
+}
+
+export function evaluateL2Entry(
+  entry: L2CacheEntry | undefined,
+  now: number,
+  filter?: L2GetFilter,
+): L2EntryVerdict {
+  if (!entry) return "miss";
+  if (isL2EntryExpired(entry, now)) return "expired";
+  if (filter?.provider !== undefined && entry.provider !== filter.provider) return "mismatch";
+  if (filter?.model !== undefined && entry.model !== filter.model) return "mismatch";
+  return "hit";
+}
+
 /**
  * L2 browser cache via IndexedDB (idb wrapper).
  */
@@ -36,11 +70,13 @@ export class L2BrowserCache {
   private db: IDBPDatabase | null = null;
   private readonly dbName: string;
   private readonly maxSizeBytes: number;
+  private readonly defaultTtlMs?: number;
   private totalSizeBytes = 0;
 
   constructor(options: L2BrowserCacheOptions) {
     this.dbName = options.dbName;
     this.maxSizeBytes = options.maxSizeMB * 1024 * 1024;
+    this.defaultTtlMs = options.defaultTtlMs;
   }
 
   async init(): Promise<void> {
@@ -66,11 +102,17 @@ export class L2BrowserCache {
     return this.db;
   }
 
-  async get(hash: string): Promise<ChatResponse | undefined> {
+  async get(hash: string, filter?: L2GetFilter): Promise<ChatResponse | undefined> {
     const key = sanitizeCacheKey(hash);
     const db = this.requireDb();
     const entry = (await db.get(STORE, key)) as L2CacheEntry | undefined;
-    if (!entry) return undefined;
+    const verdict = evaluateL2Entry(entry, Date.now(), filter);
+
+    if (verdict === "expired") {
+      await this.delete(hash);
+      return undefined;
+    }
+    if (verdict !== "hit" || !entry) return undefined;
 
     entry.lastAccessedAt = Date.now();
     await db.put(STORE, entry);
@@ -79,7 +121,13 @@ export class L2BrowserCache {
     return { ...response, cached: true, cacheLayer: "L2" };
   }
 
-  async set(hash: string, response: ChatResponse, provider: string, model: string): Promise<void> {
+  async set(
+    hash: string,
+    response: ChatResponse,
+    provider: string,
+    model: string,
+    ttlMs?: number,
+  ): Promise<void> {
     const key = sanitizeCacheKey(hash);
     const db = this.requireDb();
     const serialized = JSON.stringify({ ...response, cached: true, cacheLayer: "L2" });
@@ -93,6 +141,7 @@ export class L2BrowserCache {
     await this.evictIfNeeded(sizeBytes);
 
     const now = Date.now();
+    const expiresAt = resolveL2ExpiresAt(now, ttlMs, this.defaultTtlMs);
     const entry: L2CacheEntry = {
       hash: key,
       response: serialized,
@@ -101,6 +150,7 @@ export class L2BrowserCache {
       createdAt: existing?.createdAt ?? now,
       lastAccessedAt: now,
       sizeBytes,
+      ...(expiresAt !== undefined ? { expiresAt } : {}),
     };
 
     await db.put(STORE, entry);

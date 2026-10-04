@@ -19,6 +19,8 @@ import {
 } from "./match-policy/verified-decision.js";
 import { serializePrompt } from "./hash.js";
 
+const EXACT_ENOUGH_SIMILARITY = 0.999;
+
 export interface SemanticMatchResult {
   response: ChatResponse;
   similarity: number;
@@ -31,6 +33,15 @@ export interface SemanticCandidate {
   response: ChatResponse;
   embedding: Float32Array;
   artifact?: string;
+  provider: string;
+  model: string;
+  lastAccessedAt: number;
+}
+
+export interface SemanticMatcherStats {
+  size: number;
+  hits: number;
+  misses: number;
 }
 
 export interface SemanticMatcherOptions {
@@ -50,6 +61,9 @@ export class SemanticMatcher {
   private readonly embedder: EmbeddingProvider;
   private readonly candidates = new Map<string, SemanticCandidate>();
   private readonly maxCandidates: number;
+  private hits = 0;
+  private misses = 0;
+  private lastStamp = 0;
 
   constructor(options: SemanticMatcherOptions = {}) {
     const highThreshold = options.highThreshold ?? 0.92;
@@ -84,10 +98,21 @@ export class SemanticMatcher {
       typeof request.metadata?.artifact === "string" ? request.metadata.artifact : undefined;
 
     let best: SemanticMatchResult | null = null;
+    let bestCandidate: SemanticCandidate | null = null;
 
     for (const candidate of this.candidates.values()) {
+      if (request.provider !== candidate.provider) continue;
+      if (request.model !== candidate.model) continue;
       if (queryArtifact !== candidate.artifact) continue;
+
       const similarity = cosineSimilarity(queryEmbedding, candidate.embedding);
+
+      if (similarity >= EXACT_ENOUGH_SIMILARITY) {
+        this.touch(candidate);
+        this.hits += 1;
+        return this.toMatchResult(candidate, similarity);
+      }
+
       let decision = this.policy.decide(similarity);
 
       if (this.verifiedPolicy && decision === "gray") {
@@ -100,19 +125,19 @@ export class SemanticMatcher {
       if (decision !== "accept") continue;
 
       if (!best || similarity > best.similarity) {
-        best = {
-          response: {
-            ...candidate.response,
-            cached: true,
-            cacheLayer: "semantic",
-          },
-          similarity,
-          matchedHash: candidate.hash,
-        };
+        best = this.toMatchResult(candidate, similarity);
+        bestCandidate = candidate;
       }
     }
 
-    return best;
+    if (best && bestCandidate) {
+      this.touch(bestCandidate);
+      this.hits += 1;
+      return best;
+    }
+
+    this.misses += 1;
+    return null;
   }
 
   async index(request: ChatRequest, response: ChatResponse, hash: string): Promise<void> {
@@ -128,6 +153,9 @@ export class SemanticMatcher {
       embedding,
       artifact:
         typeof request.metadata?.artifact === "string" ? request.metadata.artifact : undefined,
+      provider: request.provider,
+      model: request.model,
+      lastAccessedAt: this.now(),
     });
 
     this.evictIfNeeded();
@@ -145,6 +173,10 @@ export class SemanticMatcher {
     return blobToEmbedding(blob);
   }
 
+  delete(hash: string): boolean {
+    return this.candidates.delete(hash);
+  }
+
   size(): number {
     return this.candidates.size;
   }
@@ -153,16 +185,47 @@ export class SemanticMatcher {
     this.candidates.clear();
   }
 
+  getStats(): SemanticMatcherStats {
+    return {
+      size: this.candidates.size,
+      hits: this.hits,
+      misses: this.misses,
+    };
+  }
+
+  private toMatchResult(candidate: SemanticCandidate, similarity: number): SemanticMatchResult {
+    return {
+      response: {
+        ...candidate.response,
+        cached: true,
+        cacheLayer: "semantic",
+      },
+      similarity,
+      matchedHash: candidate.hash,
+    };
+  }
+
+  private touch(candidate: SemanticCandidate): void {
+    candidate.lastAccessedAt = this.now();
+  }
+
+  private now(): number {
+    const t = Date.now();
+    this.lastStamp = t <= this.lastStamp ? this.lastStamp + 1 : t;
+    return this.lastStamp;
+  }
+
   private evictIfNeeded(): void {
     if (this.candidates.size <= this.maxCandidates) return;
     const overflow = this.candidates.size - this.maxCandidates;
-    const keys = Array.from(this.candidates.keys()).slice(0, overflow);
-    for (const key of keys) {
+    const evictKeys = Array.from(this.candidates.values())
+      .sort((a, b) => a.lastAccessedAt - b.lastAccessedAt)
+      .slice(0, overflow)
+      .map((candidate) => candidate.hash);
+    for (const key of evictKeys) {
       this.candidates.delete(key);
     }
   }
 }
-
-export const SEMANTIC_MATCH_PHASE = 3 as const;
 
 export type { MatchDecision };

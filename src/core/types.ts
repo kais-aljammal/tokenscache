@@ -29,7 +29,12 @@ export const TokensCacheConfigSchema = z.object({
     .optional(),
   cache: z
     .object({
-      l1: z.object({ maxEntries: z.number().int().positive().default(500) }).optional(),
+      l1: z
+        .object({
+          maxEntries: z.number().int().positive().default(500),
+          ttlMs: z.number().int().positive().optional(),
+        })
+        .optional(),
       l2: z
         .object({
           dbName: z.string().default("tokenscache"),
@@ -40,6 +45,7 @@ export const TokensCacheConfigSchema = z.object({
         .object({
           dbPath: z.string().default("./tokenscache.db"),
           maxSizeMB: z.number().positive().default(1000),
+          maxEntries: z.number().int().positive().optional(),
         })
         .optional(),
       semantic: z
@@ -47,6 +53,7 @@ export const TokensCacheConfigSchema = z.object({
           highThreshold: z.number().min(0).max(1).default(0.92),
           grayZoneMin: z.number().min(0).max(1).default(0.7),
           matchPolicy: MatchPolicySchema.default("static-threshold"),
+          maxCandidates: z.number().int().positive().optional(),
         })
         .optional(),
       gemini: z
@@ -56,6 +63,8 @@ export const TokensCacheConfigSchema = z.object({
         .optional(),
       /** When true, cache hits on metadata.artifact for agent file/codegen workflows. */
       agentArtifactScope: z.boolean().default(false),
+      includeModelInKey: z.boolean().default(true),
+      includeToolsInKey: z.boolean().default(true),
     })
     .optional(),
   optimizer: z

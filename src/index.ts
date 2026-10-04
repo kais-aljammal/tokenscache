@@ -40,6 +40,7 @@ export class TokensCache {
   private cacheRouter: CacheRouter | null = null;
   private budgetEnforcer: BudgetEnforcer | null = null;
   private readonly providers = new Map<string, ProviderAdapter>();
+  private readonly inFlight = new Map<string, Promise<ChatResponse>>();
   private _cacheHits = 0;
   private _cacheMisses = 0;
 
@@ -61,7 +62,17 @@ export class TokensCache {
     if (this._initialized) return;
 
     const l1Max = this.config.cache?.l1?.maxEntries ?? 500;
+    const l1TtlMs = this.config.cache?.l1?.ttlMs;
     const agentArtifactScope = this.config.cache?.agentArtifactScope ?? false;
+    const includeModelInKey = this.config.cache?.includeModelInKey ?? true;
+    const includeToolsInKey = this.config.cache?.includeToolsInKey ?? true;
+    const routerOptions = {
+      l1MaxEntries: l1Max,
+      l1TtlMs,
+      agentArtifactScope,
+      includeModelInKey,
+      includeToolsInKey,
+    };
 
     try {
       this.database = await openDatabase({ dbPath: this._dbPath });
@@ -71,6 +82,10 @@ export class TokensCache {
       const l3 = new L3LocalCache({
         adapter: this.database.adapter,
         embeddingProvider: new HashEmbeddingService(64),
+        maxEntries: this.config.cache?.l3?.maxEntries,
+        maxSizeBytes: this.config.cache?.l3?.maxSizeMB
+          ? this.config.cache.l3.maxSizeMB * 1024 * 1024
+          : undefined,
       });
       await l3.init();
 
@@ -81,13 +96,11 @@ export class TokensCache {
             grayZoneMin: semanticConfig.grayZoneMin,
             matchPolicy: semanticConfig.matchPolicy,
             embeddingProvider: new HashEmbeddingService(64),
+            maxCandidates: semanticConfig.maxCandidates,
           })
         : undefined;
 
-      this.cacheRouter = new CacheRouter(
-        { l1MaxEntries: l1Max, agentArtifactScope },
-        { l3, semantic },
-      );
+      this.cacheRouter = new CacheRouter(routerOptions, { l3, semantic });
       this.budgetEnforcer = new BudgetEnforcer({
         adapter: this.database.adapter,
         config: this.config,
@@ -96,7 +109,7 @@ export class TokensCache {
     } catch {
       this.database = null;
       this.ledger = null;
-      this.cacheRouter = new CacheRouter({ l1MaxEntries: l1Max, agentArtifactScope });
+      this.cacheRouter = new CacheRouter(routerOptions);
       this.budgetEnforcer = null;
     }
 
@@ -137,85 +150,108 @@ export class TokensCache {
         cacheLayer: cacheResult.layer,
       };
     }
+
+    const inflightKey = router.hashRequest(request);
+
+    const pending = this.inFlight.get(inflightKey);
+    if (pending) {
+      const shared = await pending;
+      this._cacheHits++;
+      return {
+        ...shared,
+        cached: true,
+        cacheLayer: shared.cacheLayer ?? "L1",
+      };
+    }
+
     this._cacheMisses++;
 
-    let processed: ChatRequest = { ...request };
+    const fetchPromise = (async (): Promise<ChatResponse> => {
+      let processed: ChatRequest = { ...request };
 
-    if (this.budgetEnforcer) {
-      const budgetCheck = this.budgetEnforcer.check(processed);
-      processed = this.budgetEnforcer.applyAction(processed, budgetCheck.action);
-    }
+      if (this.budgetEnforcer) {
+        const budgetCheck = this.budgetEnforcer.check(processed);
+        processed = this.budgetEnforcer.applyAction(processed, budgetCheck.action);
+      }
 
-    const opt = this.config.optimizer;
+      const opt = this.config.optimizer;
 
-    if (opt?.toolPruning !== false && processed.tools) {
-      processed = {
-        ...processed,
-        tools: pruneTools(processed.tools, processed.messages),
-      };
-    }
+      if (opt?.toolPruning !== false && processed.tools) {
+        processed = {
+          ...processed,
+          tools: pruneTools(processed.tools, processed.messages),
+        };
+      }
 
-    if (opt?.historyCompression !== false) {
-      processed = {
-        ...processed,
-        messages: await compressHistory(processed.messages, {
-          compressionTrigger: opt?.compressionTrigger,
-        }),
-      };
-    }
+      if (opt?.historyCompression !== false) {
+        processed = {
+          ...processed,
+          messages: await compressHistory(processed.messages, {
+            compressionTrigger: opt?.compressionTrigger,
+          }),
+        };
+      }
 
-    if (opt?.outputShaping !== false) {
-      processed = {
-        ...processed,
-        messages: shapeOutput(processed.messages, {
-          triggerRatio: opt?.outputShapingTrigger,
-          holdoutRatio: opt?.outputShapingHoldout,
-        }),
-      };
-    }
+      if (opt?.outputShaping !== false) {
+        processed = {
+          ...processed,
+          messages: shapeOutput(processed.messages, {
+            triggerRatio: opt?.outputShapingTrigger,
+            holdoutRatio: opt?.outputShapingHoldout,
+          }),
+        };
+      }
 
-    if (opt?.cacheAlignment !== false) {
-      const alignment = alignForProviderCache(
-        processed.messages,
-        {},
-        {
-          provider: processed.provider,
-          model: processed.model,
-        },
-      );
-      processed = {
-        ...processed,
+      if (opt?.cacheAlignment !== false) {
+        const alignment = alignForProviderCache(
+          processed.messages,
+          {},
+          {
+            provider: processed.provider,
+            model: processed.model,
+          },
+        );
+        processed = {
+          ...processed,
+          metadata: {
+            ...processed.metadata,
+            cacheAlignment: alignment,
+          },
+        };
+      }
+
+      const adapter = this.providers.get(processed.provider);
+      if (!adapter) {
+        throw new Error(`[TokensCache] No provider registered: ${processed.provider}`);
+      }
+
+      const response = await adapter.chat(processed);
+      const enriched: ChatResponse = {
+        ...response,
+        cached: false,
         metadata: {
+          ...response.metadata,
           ...processed.metadata,
-          cacheAlignment: alignment,
         },
       };
+
+      await router.store(request, enriched);
+
+      if (this.budgetEnforcer) {
+        const includeCacheStorage = this.config.budget?.includeCacheStorageHoldingCosts ?? true;
+        this.budgetEnforcer.record(processed, response.usage, response.id, includeCacheStorage);
+        this.database?.persist();
+      }
+
+      return enriched;
+    })();
+
+    this.inFlight.set(inflightKey, fetchPromise);
+    try {
+      return await fetchPromise;
+    } finally {
+      this.inFlight.delete(inflightKey);
     }
-
-    const adapter = this.providers.get(processed.provider);
-    if (!adapter) {
-      throw new Error(`[TokensCache] No provider registered: ${processed.provider}`);
-    }
-
-    const response = await adapter.chat(processed);
-    const enriched: ChatResponse = {
-      ...response,
-      cached: false,
-      metadata: {
-        ...response.metadata,
-        ...processed.metadata,
-      },
-    };
-
-    await router.store(request, enriched);
-
-    if (this.budgetEnforcer) {
-      const includeCacheStorage = this.config.budget?.includeCacheStorageHoldingCosts ?? true;
-      this.budgetEnforcer.record(processed, response.usage, response.id, includeCacheStorage);
-      this.database?.persist();
-    }
-
-    return enriched;
   }
 
   getCacheStats(): {
@@ -223,12 +259,21 @@ export class TokensCache {
     sessionId: string;
     hits: number;
     misses: number;
+    hitRate: number;
+    layers?: Record<string, number>;
   } {
+    const routerStats = this.cacheRouter?.getStats();
+    const hits = this._cacheHits;
+    const misses = this._cacheMisses;
+    const total = hits + misses;
+
     return {
-      l1Size: this.cacheRouter?.getStats().l1Size ?? 0,
+      l1Size: routerStats?.l1Size ?? 0,
       sessionId: this.sessionId,
-      hits: this._cacheHits,
-      misses: this._cacheMisses,
+      hits,
+      misses,
+      hitRate: total === 0 ? 0 : hits / total,
+      ...(routerStats?.hits ? { layers: routerStats.hits } : {}),
     };
   }
 
@@ -279,7 +324,13 @@ export class TokensCache {
 
 export { TokensCacheConfigSchema };
 export type { TokensCacheConfig, ChatRequest, ChatResponse, ChatMessage } from "./core/types.js";
-export { CacheManager, LRUEvictionPolicy, FIFOEvictionPolicy } from "./core/cache/cache-manager.js";
+export {
+  CacheManager,
+  LRUEvictionPolicy,
+  FIFOEvictionPolicy,
+  LFUEvictionPolicy,
+} from "./core/cache/cache-manager.js";
+export { hashCacheKey, hashPromptSync, serializeCacheKey } from "./core/cache/hash.js";
 export { ProviderAdapter } from "./core/providers/base.js";
 export { BudgetLedger, checkBudgetLimits } from "./core/budget/ledger.js";
 export { BudgetEnforcer } from "./core/budget/enforcer.js";

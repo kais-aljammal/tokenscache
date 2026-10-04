@@ -62,8 +62,23 @@ export class LocalEmbeddingService implements EmbeddingProvider {
   }
 }
 
+function hashFeatureIndex(feature: string, dimensions: number): number {
+  let hash = 2166136261;
+  for (let i = 0; i < feature.length; i++) {
+    hash ^= feature.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0) % dimensions;
+}
+
+function addHashedFeature(vec: Float32Array, feature: string, weight: number): void {
+  vec[hashFeatureIndex(feature, vec.length)] += weight;
+}
+
 /**
  * Deterministic lightweight embedder for tests and offline fallback.
+ * Hashed character + word unigrams/bigrams keep small edits close and
+ * raise paraphrase overlap above unrelated text.
  */
 export class HashEmbeddingService implements EmbeddingProvider {
   readonly dimensions: number;
@@ -73,11 +88,36 @@ export class HashEmbeddingService implements EmbeddingProvider {
   }
 
   async embed(text: string): Promise<Float32Array> {
-    const vec = new Float32Array(this.dimensions);
+    const dims = this.dimensions;
+    const vec = new Float32Array(dims);
     const normalized = text.trim().toLowerCase();
+    if (!normalized) {
+      return vec;
+    }
+
+    const charVec = new Float32Array(dims);
+    const wordVec = new Float32Array(dims);
+
     for (let i = 0; i < normalized.length; i++) {
-      const idx = (normalized.charCodeAt(i) * (i + 1)) % this.dimensions;
-      vec[idx] += 1;
+      addHashedFeature(charVec, `u:${normalized.charAt(i)}`, 1);
+      if (i + 1 < normalized.length) {
+        addHashedFeature(charVec, `b:${normalized.charAt(i)}${normalized.charAt(i + 1)}`, 1);
+      }
+    }
+
+    const words = normalized.split(/[^a-z0-9]+/).filter(Boolean);
+    for (let i = 0; i < words.length; i++) {
+      addHashedFeature(wordVec, `w:${words[i]}`, 1);
+      if (i + 1 < words.length) {
+        addHashedFeature(wordVec, `p:${words[i]}_${words[i + 1]}`, 1);
+      }
+    }
+
+    normalizeVector(charVec);
+    normalizeVector(wordVec);
+
+    for (let i = 0; i < dims; i++) {
+      vec[i] = 0.4 * charVec[i]! + 0.6 * wordVec[i]!;
     }
     return normalizeVector(vec);
   }
